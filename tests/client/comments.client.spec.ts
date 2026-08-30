@@ -12,18 +12,17 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { GISCUS, commentsTerm, giscusLang, pluginSlug } from '../../src/client/comments.ts'
+import { BRAND } from '../../src/brand.ts'
 
 const root = new URL('../../', import.meta.url)
 
 describe('giscus configuration', () => {
-  it('matches the config the static site is built with', async () => {
-    const site = (await import(new URL('site/comments.mjs', root).href)).default
-    expect(site.enabled).toBe(true)
+  it('uses the brand discussion config, kept in sync with BRAND.giscus', () => {
     expect({
-      repo: site.repo,
-      repoId: site.repoId,
-      category: site.category,
-      categoryId: site.categoryId,
+      repo: BRAND.giscus.repo,
+      repoId: BRAND.giscus.repoId,
+      category: BRAND.giscus.category,
+      categoryId: BRAND.giscus.categoryId,
     }).toEqual({ ...GISCUS })
   })
 })

@@ -1,0 +1,75 @@
+{
+  "name": "acme-plugin-catalog",
+  "url": "https://plugins.acme.example",
+  "source": "https://github.com/acme/acme-market",
+  "updated": "2026-08-28",
+  "count": 4,
+  "categories": {
+    "browser": { "en": "Browser & Web", "zh": "浏览器与网页" },
+    "tools": { "en": "Tools & Capabilities", "zh": "工具与能力" },
+    "automation": { "en": "Automation", "zh": "自动化" },
+    "docs": { "en": "Docs & Rendering", "zh": "文档与渲染" }
+  },
+  "plugins": [
+    {
+      "name": "@wxg-prc-cpg/browser-skill-dsh-plugin",
+      "owner": "Tencent",
+      "url": "https://github.com/Tencent/BrowserSkill/tree/main/packages/dsh-plugin-browserskill",
+      "category": "browser",
+      "description": {
+        "en": "BrowserSkill browser automation for DeepSeek Harness: exposes browser_* tools so the model can open pages, click, type and fill forms.",
+        "zh": "为 DeepSeek Harness 提供 BrowserSkill 浏览器自动化：暴露 browser_* 工具，让模型能打开页面、点击、输入与填写表单。"
+      },
+      "npm": "@wxg-prc-cpg/browser-skill-dsh-plugin",
+      "stars": null,
+      "downloads": null,
+      "install": "dsh plugin --profile web add @wxg-prc-cpg/browser-skill-dsh-plugin",
+      "added": "2026-08-28"
+    },
+    {
+      "name": "@acme/dsh-internal-tools",
+      "owner": "acme",
+      "url": "https://github.com/acme/dsh-internal-tools",
+      "category": "tools",
+      "description": {
+        "en": "Acme internal capability tools: code review, release notes and changelog generation for the platform team.",
+        "zh": "Acme 内部能力工具：面向平台团队的代码评审、发布说明与 changelog 生成。"
+      },
+      "npm": "@acme/dsh-internal-tools",
+      "stars": 12,
+      "downloads": 340,
+      "install": "dsh plugin --profile web add @acme/dsh-internal-tools",
+      "added": "2026-08-20"
+    },
+    {
+      "name": "@acme/dsh-doc-gen",
+      "owner": "acme",
+      "url": "https://github.com/acme/dsh-doc-gen",
+      "category": "docs",
+      "description": {
+        "en": "Renders internal spec documents from DSH sessions as HTML/PDF.",
+        "zh": "把 DSH 会话中的内部规格文档渲染为 HTML/PDF。"
+      },
+      "npm": "@acme/dsh-doc-gen",
+      "stars": 4,
+      "downloads": 88,
+      "install": "dsh plugin --profile web add @acme/dsh-doc-gen",
+      "added": "2026-08-22"
+    },
+    {
+      "name": "@acme/dsh-deploy-bot",
+      "owner": "acme",
+      "url": "https://github.com/acme/dsh-deploy-bot",
+      "category": "automation",
+      "description": {
+        "en": "One-click deploy trigger and status for Acme staging envs.",
+        "zh": "Acme 预发布环境的一键触发与状态查询。"
+      },
+      "npm": "@acme/dsh-deploy-bot",
+      "stars": 0,
+      "downloads": 19,
+      "install": "dsh plugin --profile web add @acme/dsh-deploy-bot",
+      "added": "2026-08-27"
+    }
+  ]
+}

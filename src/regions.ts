@@ -19,6 +19,8 @@
  * way out that is not "wait for the next release".
  */
 
+import { BRAND } from './brand.ts'
+
 /** A region the market can download from. */
 export type Region = 'global' | 'china'
 
@@ -56,7 +58,7 @@ const GITHUB_PROXY_CHINA = 'https://gh-proxy.com'
  * A custom domain rather than the repository path, deliberately: it survives
  * the repo being renamed or moved, and Pages puts a CDN in front of it.
  */
-const CATALOG_OFFICIAL = 'https://awesome-dsh-plugin.com/plugins.json'
+const CATALOG_OFFICIAL = BRAND.defaultCatalogUrl
 
 /**
  * One place the catalog can be read from.

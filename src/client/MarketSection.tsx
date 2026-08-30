@@ -37,6 +37,7 @@ import {
 import css from './Market.module.css'
 import { CommentsModal } from './CommentsModal.tsx'
 import { OperationsPanel } from './OperationsPanel.tsx'
+import { BRAND } from '../brand.ts'
 import { clearSettled, drop, enqueue, patch as patchRecord, recordForUrl } from './operations.ts'
 import type { OperationRecord } from './operations.ts'
 import { Diagnostics } from './Diagnostics.tsx'
@@ -3136,7 +3137,7 @@ export function MarketSection(props: MarketSectionProps) {
           {/* A quiet pointer back to the project — most visitors reach the
               market through a client that embeds it, with no other way to
               find the repo it came from. */}
-          <a className={css.repoLink} href="https://github.com/dsh-market/dsh-market" target="_blank" rel="noreferrer" title="dsh-market · GitHub">dsh-market</a>
+          <a className={css.repoLink} href={BRAND.repoUrl} target="_blank" rel="noreferrer" title={BRAND.repoTitle}>{BRAND.displayNameEn}</a>
           {version !== null && <span className={css.version} title={t('versionHint')}>v{version}</span>}
           {(() => {
             const self = installed['dshmarket'] !== undefined ? 'dshmarket' : 'dsh-market'
@@ -3161,7 +3162,7 @@ export function MarketSection(props: MarketSectionProps) {
         </div>
         <div className={css.sub}>
           <span>{t('subtitle')}</span>
-          <a className={css.submitLink} href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noreferrer">{t('submitPlugin')}</a>
+          <a className={css.submitLink} href={BRAND.submitUrl} target="_blank" rel="noreferrer">{t('submitPlugin')}</a>
           <span className={css.grow} />
           <Button
             variant="outline"

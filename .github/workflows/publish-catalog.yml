@@ -1,0 +1,47 @@
+# 把你的私有插件目录发布到 GitHub Pages，得到一个可直接填入
+# src/brand.ts -> defaultCatalogUrl / defaultUpdatesUrl 的地址。
+#
+# 部署后：
+#   plugins.json : https://<owner>.github.io/<repo>/plugins.json
+#   updates.json : https://<owner>.github.io/<repo>/updates.json
+# 把 site 的 URL 设为 https://<owner>.github.io/<repo>/，并把这两个地址写进 brand.ts 即可。
+#
+# 触发：push 到 main 且改动了 private-catalog/，或手动触发（Actions -> Run workflow）。
+name: Publish private catalog to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['private-catalog/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 一次只跑一个 Pages 部署，避免抢占。
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload catalog artifacts (plugins.json / updates.json)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: private-catalog
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

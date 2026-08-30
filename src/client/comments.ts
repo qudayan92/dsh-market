@@ -12,11 +12,13 @@
  * nobody notices until someone asks why their comment vanished.
  */
 
+import { BRAND } from '../brand.ts'
+
 export const GISCUS = Object.freeze({
-  repo: 'awesome-dsh-plugin/awesome-dsh-plugin',
-  repoId: 'R_kgDOT3ajCQ',
-  category: 'Plugins',
-  categoryId: 'DIC_kwDOT3ajCc4DES8_',
+  repo: BRAND.giscus.repo,
+  repoId: BRAND.giscus.repoId,
+  category: BRAND.giscus.category,
+  categoryId: BRAND.giscus.categoryId,
 })
 
 /**

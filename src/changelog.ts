@@ -24,11 +24,12 @@ import { activeRegion, routesFor } from './regions.ts'
 import { profileDir, readInstalled } from './profile.ts'
 import { repoOfTarget } from './sources.ts'
 import { checkUpdates } from './updates.ts'
+import { BRAND } from './brand.ts'
 
 const UPDATES_PACKAGE = 'dsh-plugin-updates'
 const UPDATES_FILE = 'package/updates.json'
 /** The origin copy sits beside plugins.json on the catalog host. */
-const ORIGIN_UPDATES = process.env.DSHM_UPDATES_ORIGIN ?? 'https://awesome-dsh-plugin.com/updates.json'
+const ORIGIN_UPDATES = process.env.DSHM_UPDATES_ORIGIN ?? BRAND.defaultUpdatesUrl
 /** Notes are produced daily; re-checking hourly bounds staleness without churn. */
 const NOTES_TTL_MS = 60 * 60 * 1000
 const TIMEOUT_MS = 15_000

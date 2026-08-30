@@ -14,6 +14,7 @@ import {
 } from '../src/regions.ts'
 import { codeloadAllowBuildsKey, codeloadTarball, githubCommitOfTarget, gitAllowBuildsKey, repoOfTarget } from '../src/sources.ts'
 import { githubProxyInUse, githubUrl, setGithubProxy } from '../src/client/market-data.ts'
+import { BRAND } from '../src/brand.ts'
 
 const SHA = 'b0e6c57ebeeb4796017864f5cd5c66e6ba0899ec'
 
@@ -35,7 +36,7 @@ describe('routesFor', () => {
     expect(routes.npmRegistry).toBe(DEFAULT_NPM_REGISTRY)
     expect(routes.githubProxy).toBeNull()
     // One source and no fallbacks: this IS what everything else falls back to.
-    expect(routes.catalog).toEqual([{ kind: 'url', url: expect.stringContaining('awesome-dsh-plugin.com') }])
+    expect(routes.catalog).toEqual([{ kind: 'url', url: BRAND.defaultCatalogUrl }])
   })
 
   it('sends every china route through a mirror, ending at the address that always works', () => {
@@ -49,7 +50,7 @@ describe('routesFor', () => {
     // artifact the site never commits, so a raw.githubusercontent step would
     // be a guaranteed 404 that costs two attempts to discover.
     expect(routes.catalog).toHaveLength(2)
-    expect(routes.catalog[1]).toEqual({ kind: 'url', url: expect.stringContaining('awesome-dsh-plugin.com') })
+    expect(routes.catalog[1]).toEqual({ kind: 'url', url: BRAND.defaultCatalogUrl })
   })
 
   it('moves the catalog package onto whichever registry the environment named', () => {

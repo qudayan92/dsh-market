@@ -1,7 +1,9 @@
 /** zh/en dictionaries for the Market settings section and install toast. */
 
+import { BRAND } from '../brand.ts'
+
 export const zh = {
-  nav: '插件市场',
+  nav: BRAND.displayNameZh,
   setCardDesc: '查看插件市场版本与设置。',
   setSelfUpToDate: '已是最新版本',
   setSelfUpdateReady: '有新版本',
@@ -37,7 +39,7 @@ export const zh = {
   setSelfRemovedHint: '重启 DeepSeek Harness 后完全清理。',
   setSelfFailed: '操作失败',
   versionHint: '插件市场版本 — 反馈问题时请附上',
-  subtitle: '发现社区为 DeepSeek Harness 开发的插件',
+  subtitle: `发现 ${BRAND.displayNameZh} 收录的插件`,
   submitPlugin: '申请收录插件 ↗',
   descExpand: '展开',
   descCollapse: '收起',
@@ -477,7 +479,7 @@ export const zh = {
 export type MarketKey = keyof typeof zh
 
 export const en: Record<MarketKey, string> = {
-  nav: 'Plugin Market',
+  nav: BRAND.displayNameEn,
   setCardDesc: 'View the plugin market version and settings.',
   setSelfUpToDate: 'Up to date',
   setSelfUpdateReady: 'New version available:',
@@ -513,7 +515,7 @@ export const en: Record<MarketKey, string> = {
   setSelfRemovedHint: 'Restart DeepSeek Harness to finish cleaning up.',
   setSelfFailed: 'The operation failed',
   versionHint: 'Plugin market version — include it when reporting an issue',
-  subtitle: 'Discover community plugins for DeepSeek Harness',
+  subtitle: `Discover plugins curated by ${BRAND.displayNameEn}`,
   submitPlugin: 'Submit a plugin ↗',
   descExpand: 'Show more',
   descCollapse: 'Show less',

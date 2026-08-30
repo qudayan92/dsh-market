@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CommentsModal } from '../../src/client/CommentsModal.tsx'
 import { en, zh } from '../../src/client/locales.ts'
+import { BRAND } from '../../src/brand.ts'
 
 afterEach(cleanup)
 
@@ -46,7 +47,7 @@ describe('CommentsModal', () => {
     expect(s.dataset.mapping).toBe('specific')
     // Without strict, `alice/dsh-loop` and `alice/dsh-loop--x` can collide.
     expect(s.dataset.strict).toBe('1')
-    expect(s.dataset.repo).toBe('awesome-dsh-plugin/awesome-dsh-plugin')
+    expect(s.dataset.repo).toBe(BRAND.giscus.repo)
   })
 
   it('qualifies a plugin that lives in a subdirectory', async () => {

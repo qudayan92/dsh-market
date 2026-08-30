@@ -15,6 +15,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { describeFetchFailure, forgetCatalog, loadRegistry } from '../src/registry.ts'
 import { configuredProxy, marketFetch } from '../src/net.ts'
+import { BRAND } from '../src/brand.ts'
+
+/** The catalog host and a regex for it, derived from BRAND so a rebrand needs
+ * no touch-ups here. */
+const CATALOG_HOST = new URL(BRAND.defaultCatalogUrl).hostname
+const catalogRx = new RegExp(CATALOG_HOST.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
 /**
  * undici stands in for the real outbound path. `marketFetch` routes through
@@ -193,10 +199,10 @@ describe('loadRegistry download regions', () => {
     return stub
   }
 
-  it('reads the catalog from the official domain in the global region', async () => {
-    const stub = byUrl([[/awesome-dsh-plugin\.com/, ok(CATALOG)]])
+  it('reads the catalog from the default domain in the global region', async () => {
+    const stub = byUrl([[catalogRx, ok(CATALOG)]])
     await loadRegistry('global')
-    expect(String(stub.mock.calls[0]?.[0])).toContain('awesome-dsh-plugin.com')
+    expect(String(stub.mock.calls[0]?.[0])).toContain(CATALOG_HOST)
   })
 
   it('asks the published package first in the china region', async () => {
@@ -213,7 +219,7 @@ describe('loadRegistry download regions', () => {
     // must mean a slow market, not an empty one.
     const stub = byUrl([
       [/mirrors\.cloud\.tencent\.com/, new Error('fetch failed')],
-      [/awesome-dsh-plugin\.com/, ok(CATALOG)],
+      [catalogRx, ok(CATALOG)],
     ])
     const registry = await loadRegistry('china')
     expect(registry.plugins).toHaveLength(1)
@@ -230,11 +236,11 @@ describe('loadRegistry download regions', () => {
     // A validator is scoped to the URL that issued it. Carried across a
     // region switch it could earn a 304 from an origin whose body we have
     // never seen, and the market would render a catalog it never received.
-    byUrl([[/awesome-dsh-plugin\.com/, okTagged(CATALOG, 'W/"one"')]])
+    byUrl([[catalogRx, okTagged(CATALOG, 'W/"one"')]])
     await loadRegistry('global')
     const stub = byUrl([
       [/mirrors\.cloud\.tencent\.com/, new Error('fetch failed')],
-      [/awesome-dsh-plugin\.com/, ok(CATALOG)],
+      [catalogRx, ok(CATALOG)],
     ])
     await loadRegistry('china')
     const etagOf = (call: unknown[]): string | undefined =>
@@ -248,7 +254,7 @@ describe('loadRegistry download regions', () => {
     // The origin, though, is the same URL in both regions. Re-sending the
     // validator it issued is exactly what it is for; withholding it would
     // re-download a megabyte to be told nothing changed.
-    const originCall = stub.mock.calls.find(c => String(c[0]).includes('awesome-dsh-plugin.com'))
+    const originCall = stub.mock.calls.find(c => String(c[0]).includes(CATALOG_HOST))
     expect(etagOf(originCall!)).toBe('W/"one"')
   })
 })
