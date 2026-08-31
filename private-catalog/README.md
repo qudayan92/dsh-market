@@ -3,11 +3,12 @@
 本仓库已是一套**完全自主的私有市场 fork**，全部跑通（typecheck / build / 全量单测 / 目录校验 /
 preflight 全绿）。品牌与外部引用集中在 **`src/brand.ts`** 一处，改它即完成品牌化，源码别动。
 
-**当前状态（已替你填好，占位可用）**：
-- 市场显示名 / 仓库地址 / 收录入口 / 目录托管地址 / 更新源地址 / 讨论区 giscus / 反馈主名 —— 均已在
-  `src/brand.ts` 内自洽填好（`Acme` / `plugins.acme.example` 为占位，可直接运行验证，发布前替换即可）。
-- `private-catalog/plugins.json` 已收录 **`@wxg-prc-cpg/browser-skill-dsh-plugin`（BrowserSkill，真实可装）**
-  作为首个真实插件，另含 3 条 `@acme/*` 示例内部插件（模板，替换成你的真实内部插件）。
+**当前状态（已品牌化并扩充，可直接运行）**：
+- 市场显示名 / 仓库地址 / 收录入口 / 目录托管地址 / 更新源地址 / 反馈主名 —— 已指向 `qudayan92`
+  （`src/brand.ts`）；giscus 的 `repoId`/`categoryId` 需你从 giscus 应用填入（占位不会崩，仅评论区不加载）。
+- `private-catalog/plugins.json` 已收录 **34 条**真实插件（含私有 `@wxg-prc-cpg/browser-skill-dsh-plugin`、
+  `modlens`、`dsh-meme`、`dsh-emoji`；另 30 条由 `scripts/catalog-expansion.mjs` 从公共列表按质量分筛选，
+  经 `validate-catalog.mjs` 校验通过）。`scripts/merge-catalog.mjs` 可把 `expansion-draft.json` 并入。
 - `private-catalog/updates.json` 已生成（`{}` 合法 payload；市场回退 npm 发布时间/“无更新说明”，不报错）。
 
 ## 原理（一句话）

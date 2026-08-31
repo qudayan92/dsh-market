@@ -1,21 +1,13 @@
 {
-  "name": "Curated Plugin Market",
+  "name": "Acme Plugin Market Catalog",
   "url": "https://github.com/qudayan92/dsh-plugin-market-catalog",
   "source": "https://github.com/qudayan92/dsh-market",
   "updated": "2026-08-28",
-  "count": 34,
+  "count": 30,
   "categories": {
     "browser": {
       "en": "Browser & Web",
       "zh": "浏览器与网页"
-    },
-    "vision": {
-      "en": "Vision & Multimodal",
-      "zh": "视觉与多模态"
-    },
-    "fun": {
-      "en": "Fun & Games",
-      "zh": "趣味与游戏"
     },
     "memory": {
       "en": "Memory",
@@ -45,76 +37,16 @@
       "en": "Usage & Billing",
       "zh": "用量与计费"
     },
+    "vision": {
+      "en": "Vision & Multimodal",
+      "zh": "视觉与多模态"
+    },
     "voice": {
       "en": "Voice & Audio",
       "zh": "语音与音频"
     }
   },
   "plugins": [
-    {
-      "name": "@wxg-prc-cpg/browser-skill-dsh-plugin",
-      "owner": "Tencent",
-      "url": "https://github.com/Tencent/BrowserSkill/tree/main/packages/dsh-plugin-browserskill",
-      "category": "browser",
-      "description": {
-        "en": "BrowserSkill browser automation for DeepSeek Harness: exposes browser_* tools so the model can open pages, click, type and fill forms.",
-        "zh": "为 DeepSeek Harness 提供 BrowserSkill 浏览器自动化：暴露 browser_* 工具，让模型能打开页面、点击、输入与填写表单。"
-      },
-      "npm": "@wxg-prc-cpg/browser-skill-dsh-plugin",
-      "stars": null,
-      "downloads": null,
-      "install": "dsh plugin --profile web add @wxg-prc-cpg/browser-skill-dsh-plugin",
-      "added": "2026-08-28"
-    },
-    {
-      "name": "modlens",
-      "owner": "liustack",
-      "url": "https://github.com/liustack/modlens",
-      "category": "vision",
-      "description": {
-        "en": "Vision bridge for text-only models: paste an image, get structured JSON evidence (OCR, layout, semantics).",
-        "zh": "为纯文本模型架起视觉桥梁：粘贴图片，输出结构化 JSON 证据（OCR、版面、语义）。"
-      },
-      "npm": "@liustack/modlens",
-      "stars": 3668,
-      "downloads": 117447,
-      "install": "dsh plugin --profile web add @liustack/modlens",
-      "added": "2026-08-14",
-      "screenshots": [
-        "https://raw.githubusercontent.com/liustack/modlens/main/assets/demo-dsh-settings-card.jpg",
-        "https://raw.githubusercontent.com/liustack/modlens/main/assets/demo-dsh-paste.jpg"
-      ]
-    },
-    {
-      "name": "dsh-meme",
-      "owner": "yyh-001",
-      "url": "https://github.com/yyh-001/dsh-meme",
-      "category": "fun",
-      "description": {
-        "en": "Chat meme stickers: text-only send, mood auto-send, QQ/WeChat-style picker, auto-learn, custom packs.",
-        "zh": "聊天表情包：纯文本斗图、情绪主动发图、像 QQ/微信 一样发图、AI 自动学图、自定义表情包。"
-      },
-      "npm": "dsh-meme",
-      "stars": 54,
-      "downloads": 2626,
-      "install": "dsh plugin --profile web add dsh-meme",
-      "added": "2026-08-14"
-    },
-    {
-      "name": "dsh-emoji",
-      "owner": "hellodigua",
-      "url": "https://github.com/hellodigua/dsh-emoji",
-      "category": "fun",
-      "description": {
-        "en": "Automatically add emojis to AI replies.",
-        "zh": "为 AI 回复自动添加表情。"
-      },
-      "npm": "dsh-emoji",
-      "stars": 41,
-      "downloads": 1862,
-      "install": "dsh plugin --profile web add dsh-emoji",
-      "added": "2026-08-13"
-    },
     {
       "name": "dsh-plugin-open-app",
       "owner": "2nd1st",
