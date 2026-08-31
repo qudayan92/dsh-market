@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  entryForDep, extractReadmeImageCandidates, extractReadmeImages, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, looksTerminal, matchInstalledName, orderedCategories, pageItems, pluginCategories, previewDimensionScore, rankThemeScreenshots, safeScreenshots, themePlugins, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
+  entryForDep, extractReadmeImageCandidates, extractReadmeImages, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, looksTerminal, matchInstalledName, nameCollisionCounts, orderedCategories, pageItems, pluginCategories, previewDimensionScore, qualityScore, rankThemeScreenshots, safeScreenshots, themePlugins, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
 import type { RegistryPlugin, ScreenshotCandidate } from '../src/client/market-data.ts'
 
 function plugin(partial: Partial<RegistryPlugin>): RegistryPlugin {
@@ -323,6 +323,41 @@ describe('discover list (visiblePlugins)', () => {
     ]
     expect(visiblePlugins(rows, { category: 'all', query: '', lang: 'en', sort: 'downloads-desc' }).map(p => p.name))
       .toEqual(['has-downloads', 'zero-downloads', 'no-npm-package'])
+  })
+
+  it('sorts by quality, demoting fragile git-only and collided names', () => {
+    // Array order deliberately disagrees with the quality order on every axis
+    // so a sort that silently keeps registry order would fail by coincidence.
+    const list: RegistryPlugin[] = [
+      plugin({ name: 'q-gh-ok', stars: 40, description: { en: 'x'.repeat(20), zh: 'x'.repeat(20) } }),
+      plugin({ name: 'q-subpath', url: 'https://github.com/o/q-subpath/tree/main/packages/sub', stars: 999 }),
+      plugin({ name: 'q-npm', npm: 'q-npm', downloads: 100, stars: 5, description: { en: 'x'.repeat(20), zh: 'x'.repeat(20) } }),
+    ]
+    // npm package > git root > monorepo #path: subpath, even when the subpath
+    // has far more stars — install reliability is what the quality sort is for.
+    expect(visiblePlugins(list, { category: 'all', query: '', lang: 'en', sort: 'quality-desc' }).map(p => p.name))
+      .toEqual(['q-npm', 'q-gh-ok', 'q-subpath'])
+    expect(visiblePlugins(list, { category: 'all', query: '', lang: 'en', sort: 'quality-asc' }).map(p => p.name))
+      .toEqual(['q-subpath', 'q-gh-ok', 'q-npm'])
+  })
+
+  it('qualityScore rewards an easy install path and penalizes name collisions', () => {
+    // Install path dominates: npm > prebuilt release tarball > git root >
+    // monorepo #path: subpath (the most fragile source checkout).
+    expect(qualityScore(plugin({ npm: 'x' })))
+      .toBeGreaterThan(qualityScore(plugin({ tarball: 'https://github.com/o/x/releases/download/v1/x.tgz' })))
+    expect(qualityScore(plugin({ tarball: 'https://github.com/o/x/releases/download/v1/x.tgz' })))
+      .toBeGreaterThan(qualityScore(plugin({ stars: 100 })))
+    expect(qualityScore(plugin({ stars: 100 })))
+      .toBeGreaterThan(qualityScore(plugin({ url: 'https://github.com/o/x/tree/main/packages/x', stars: 100 })))
+
+    // A display name shared by two entries is confusing — it is penalized.
+    const dup = [
+      plugin({ name: 'dup', npm: 'dup', downloads: 10 }),
+      plugin({ name: 'dup', npm: 'dup2', downloads: 10 }),
+    ]
+    expect(nameCollisionCounts(dup).get('dup')).toBe(2)
+    expect(qualityScore(plugin({ npm: 'x' }), 2)).toBeLessThan(qualityScore(plugin({ npm: 'x' }), 1))
   })
 
   it('themePlugins lists only themes, most-starred first', () => {

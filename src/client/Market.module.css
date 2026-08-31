@@ -530,6 +530,12 @@
 .pageInfo{font-size:12px;color:var(--dsw-alias-label-secondary,#6b7280);white-space:nowrap}
 /* #60: per-plugin enable/disable switches, deprecation badges, custom groups */
 .depBadge{border:1px solid var(--dsw-alias-state-warn-primary,#b45309);color:var(--dsw-alias-state-warn-primary,#b45309);border-radius:4px;flex-shrink:0;padding:1px 6px;font-size:11px;line-height:16px;font-weight:600;white-space:nowrap;margin-left:6px}
+/* WS-3 install-path hint on the discover card: prebuilt (fine) vs source /
+   subpackage (fragile). Kept visually light so it never competes with the
+   deprecated badge. */
+.srcBadge{border:1px solid var(--dsw-alias-border-l2,#e2e2e2);border-radius:4px;flex-shrink:0;padding:1px 6px;font-size:11px;line-height:16px;font-weight:600;white-space:nowrap}
+.srcOk{color:var(--dsw-alias-state-success-primary,#16a34a);border-color:var(--dsw-alias-state-success-primary,#16a34a)}
+.srcWarn{color:var(--dsw-alias-state-warn-primary,#b45309);border-color:var(--dsw-alias-state-warn-primary,#b45309)}
 .deprecate{font-size:12px;line-height:18px;color:var(--dsw-alias-state-warn-primary,#b45309);background:var(--dsw-alias-bg-layer-2,#fdf3e3);border:1px solid var(--dsw-alias-border-l2,#f3e3c3);border-radius:8px;padding:8px 10px;margin:0}
 .deprecate a{color:var(--dsw-alias-state-warn-primary,#b45309);text-decoration:underline}
 .deprecate .src{margin-left:8px}

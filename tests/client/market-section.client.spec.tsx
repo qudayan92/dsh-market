@@ -251,6 +251,39 @@ describe('MarketSection (jsdom)', () => {
     expect(within(otherCard).queryByText(en.alreadyInstalled)).toBeNull()
   })
 
+  it('shows an install-path badge on git-source cards and none on an npm card (WS-3)', async () => {
+    // npm is the norm and gets no badge; a prebuilt Release is fine (light);
+    // a git whole-repo source or a monorepo #path: subpackage is the fragile
+    // set and gets a warning badge.
+    const plugins = [
+      { name: 'src-only', owner: 'a', url: 'https://github.com/a/src-only', category: 'tools', npm: null, description: { en: 'Whole-repo git checkout' }, install: '' },
+      { name: 'sub-pkg', owner: 'b', url: 'https://github.com/b/sub-pkg/tree/main/packages/sub', category: 'tools', npm: null, description: { en: 'Monorepo subpackage' }, install: '' },
+      { name: 'prebuilt', owner: 'c', url: 'https://github.com/c/prebuilt', category: 'tools', npm: null, tarball: 'https://github.com/c/prebuilt/releases/download/v1/prebuilt.tgz', description: { en: 'Release archive' }, install: '' },
+      { name: 'npm-pkg', owner: 'd', url: 'https://github.com/d/npm-pkg', category: 'tools', npm: 'npm-pkg', description: { en: 'Published package' }, install: '' },
+    ]
+    stubFetch({
+      '/dsh-market/registry': {
+        source: 'snapshot',
+        registry: { updated: '', count: 4, categories: REGISTRY.categories, plugins },
+      },
+      '/dsh-market/installed': { profile: 'web', installed: {}, repoIdentities: {}, live: [] },
+    })
+
+    render(<MarketSection {...props()} />)
+    await screen.findByText('src-only')
+
+    // The three fragile-or-ok non-npm cards each carry a badge; only names.
+    expect(screen.getByText(en.badgeSource)).toBeTruthy()
+    expect(screen.getByText(en.badgeSubpath)).toBeTruthy()
+    expect(screen.getByText(en.badgePrebuilt)).toBeTruthy()
+
+    // An npm package is the baseline and gets none of the badges.
+    const npmCard = screen.getByText('npm-pkg').closest('div[class*="card"]') as HTMLElement
+    for (const badge of [en.badgeSource, en.badgeSubpath, en.badgePrebuilt]) {
+      expect(within(npmCard).queryByText(badge)).toBeNull()
+    }
+  })
+
   it('shows shared host dependency findings from the installed snapshot', async () => {
     const findings = Array.from({ length: 7 }, (_, index) => ({
       code: 'shared-host-package-dependency',

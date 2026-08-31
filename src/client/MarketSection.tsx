@@ -1018,8 +1018,20 @@ function sameInstalledMap(left: InstalledMap, right: InstalledMap): boolean {
   return names.length === Object.keys(right).length && names.every(name => left[name] === right[name])
 }
 
+/** A short install-path hint (WS-3). An npm package is the norm and gets no
+ * badge; a prebuilt Release is fine (light); a git `#path:` subpackage or a
+ * whole-repo source checkout is the fragile set (warning). Structural pick on
+ * purpose so the helper needs no RegistryPlugin import in this component. */
+function sourceBadge(p: { npm?: string; tarball?: string | null; url: string }): { key: 'badgePrebuilt' | 'badgeSubpath' | 'badgeSource'; tone: 'ok' | 'warn' } | null {
+  if (p.npm) return null
+  if (p.tarball) return { key: 'badgePrebuilt', tone: 'ok' }
+  if (typeof p.url === 'string' && /\/tree\//.test(p.url)) return { key: 'badgeSubpath', tone: 'warn' }
+  return { key: 'badgeSource', tone: 'warn' }
+}
+
 /** Sort field choices in the filter panel. */
 const SORT_FIELD_OPTIONS: ReadonlyArray<{ key: SortField; label: string }> = [
+  { key: 'quality', label: 'sortQuality' },
   { key: 'downloads', label: 'sortDownloads' },
   { key: 'stars', label: 'sortStars' },
   { key: 'added', label: 'sortAdded' },
@@ -2766,6 +2778,15 @@ export function MarketSection(props: MarketSectionProps) {
                   <span className={css.star}>{'· ★ ' + formatCount(p.stars)}</span>
                 </Tooltip>
               )}
+              {(() => {
+                const sb = sourceBadge(p)
+                if (sb === null) return null
+                return (
+                  <span className={sb.tone === 'ok' ? `${css.srcBadge} ${css.srcOk}` : `${css.srcBadge} ${css.srcWarn}`} title={t(sb.key)}>
+                    {t(sb.key)}
+                  </span>
+                )
+              })()}
             </div>
           </div>
           {/* Top right, at its natural size: in the footer it needed a row of

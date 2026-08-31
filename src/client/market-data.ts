@@ -258,7 +258,7 @@ export function looksTerminal(plugin: RegistryPlugin, lang: string): boolean {
 }
 
 /** Sortable field for the Discover list. */
-export type SortField = 'downloads' | 'stars' | 'added'
+export type SortField = 'downloads' | 'stars' | 'added' | 'quality'
 /** Sort direction: desc = newest/most first, asc = oldest/least first. */
 export type SortDir = 'desc' | 'asc'
 /** Combined sort key sent to visiblePlugins. */
@@ -295,7 +295,7 @@ export interface ListQuery {
   lang: string
   /** Category labels indexed by id; omitted by callers that do not need label search. */
   categories?: Record<string, LocalizedText>
-  /** 'stars-desc' | 'stars-asc' | 'added-desc' | 'added-asc'; anything else keeps registry order. */
+  /** 'stars-desc' | 'stars-asc' | 'added-desc' | 'added-asc' | 'quality-desc' | 'quality-asc'; anything else keeps registry order. */
   sort: string
   /** Keep only plugins published within the last N days; undefined = any time. */
   sinceDays?: number
@@ -309,6 +309,58 @@ export interface ListQuery {
  */
 export function isMarketItself(plugin: Pick<RegistryPlugin, 'name' | 'npm'>): boolean {
   return plugin.name === 'dsh-market' || plugin.npm === 'dshmarket'
+}
+
+/**
+ * Display-name collision counts across a catalog (WS-2). Same-named plugins
+ * from different authors are legitimate and distinct (validate-registry W1),
+ * but a heavily shared name is confusing to browse, so the quality sort
+ * penalizes it mildly.
+ */
+export function nameCollisionCounts(plugins: readonly RegistryPlugin[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const p of plugins) counts.set(p.name, (counts.get(p.name) ?? 0) + 1)
+  return counts
+}
+
+/**
+ * A maintainer-quality score, higher is better. It weighs, in order of
+ * importance: the install path (WS-3 — a published npm package or prebuilt
+ * release is far more likely to install cleanly than a git `#path:` source
+ * checkout), the presence of real maintenance/popularity evidence,
+ * presentation quality, deprecation, and display-name collisions (WS-2).
+ *
+ * `null` is respected as a legitimate value (see `RegistryPlugin.downloads`):
+ * a missing count is a coverage gap, never a fabricated zero — a github:-only
+ * entry already earns a low install score, and we never read a missing number
+ * as "0". `sameNameCount` is how many catalog entries share this display
+ * name; pass 1 for a unique name. Pure and deterministic, so tests can pin
+ * the ordering and the discover list can sort on it.
+ */
+export function qualityScore(plugin: RegistryPlugin, sameNameCount = 1): number {
+  let score = 0
+  if (plugin.npm) score += 45
+  else if (plugin.tarball) score += 32
+  else if (typeof plugin.url === 'string' && /\/tree\//.test(plugin.url)) score += 10
+  else score += 16
+  if (typeof plugin.downloads === 'number') score += plugin.downloads > 0 ? 18 : 3
+  if (typeof plugin.stars === 'number') score += plugin.stars > 0 ? 12 : 2
+  if (plugin.screenshots && plugin.screenshots.length > 0) score += 6
+  const en = plugin.description?.en ?? ''
+  const zh = plugin.description?.zh ?? ''
+  if (en.length >= 20 && zh.length >= 20) score += 4
+  if (plugin.deprecated) score -= 30
+  if (sameNameCount > 1) score -= (sameNameCount - 1) * 5
+  return score
+}
+
+/**
+ * Score one plugin relative to its display-name collision count in `counts`.
+ * `nameCollisionCounts` returns 1 (unique) when the name is absent, so a
+ * caller can pass the map straight through.
+ */
+function qualityCompare(plugin: RegistryPlugin, counts: Map<string, number>): number {
+  return qualityScore(plugin, counts.get(plugin.name) ?? 1)
 }
 
 /**
@@ -365,6 +417,14 @@ export function visiblePlugins(plugins: RegistryPlugin[], options: ListQuery): R
   }
   if (options.sort === 'stars-asc') {
     return [...list].sort((a, b) => (a.stars ?? -1) - (b.stars ?? -1))
+  }
+  if (options.sort === 'quality-desc') {
+    const counts = nameCollisionCounts(plugins)
+    return [...list].sort((a, b) => qualityCompare(b, counts) - qualityCompare(a, counts))
+  }
+  if (options.sort === 'quality-asc') {
+    const counts = nameCollisionCounts(plugins)
+    return [...list].sort((a, b) => qualityCompare(a, counts) - qualityCompare(b, counts))
   }
   if (options.sort === 'added-desc') {
     return [...list].sort((a, b) => String(b.added).localeCompare(String(a.added)))
