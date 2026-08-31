@@ -2,7 +2,9 @@
  * 品牌与外部引用配置 —— 把 dsh-market fork 成"你自己的市场"唯一要改的地方。
  *
  * 这套 fork 已经跑通（typecheck/build/全量单测/目录校验全绿）。下面这些值目前是
- * 自洽的占位默认值（Acme / plugins.acme.example），换品牌时只需改这里，源码别动。
+ * 自洽的默认值：目录已指向 qudayan92/dsh-plugin-market-catalog（真实托管），
+ * 市场显示名与仓库/反馈名已从 Acme 占位改为 qudayan92，仅 giscus 的 repoId/categoryId
+ * 需你从 giscus 应用填入（填错或占位只会让评论区不加载，不会崩）。换品牌时改这里即可，源码别动。
  *
  * 默认值会被 `dsh web` 进程的环境变量覆盖时以环境变量为准：
  *   DSHM_REGISTRY_URL   -> 覆盖 defaultCatalogUrl
@@ -18,8 +20,8 @@
  */
 
 /** 市场在设置页 / 设置卡片 / 导航里显示的名字。 */
-const displayNameZh = 'Acme 插件市场'
-const displayNameEn = 'Acme Plugin Market'
+const displayNameZh = '精选插件市场'
+const displayNameEn = 'Curated Plugin Market'
 
 /** 你的托管地址：plugins.json 与 updates.json 放在同一处（或各自换值）。
  * 已托管到 GitHub 仓库 qudayan92/dsh-plugin-market-catalog（raw URL，无需开 Pages）。
@@ -27,8 +29,8 @@ const displayNameEn = 'Acme Plugin Market'
 const catalogBaseUrl = 'https://raw.githubusercontent.com/qudayan92/dsh-plugin-market-catalog/main'
 
 /** 你的 fork 仓库与收录入口。 */
-const repoUrl = 'https://github.com/acme/acme-market'
-const submitUrl = 'https://github.com/acme/acme-market/issues/new?template=add-plugin.md'
+const repoUrl = 'https://github.com/qudayan92/dsh-market'
+const submitUrl = 'https://github.com/qudayan92/dsh-market/issues/new'
 
 export const BRAND = Object.freeze({
   displayNameZh,
@@ -51,14 +53,15 @@ export const BRAND = Object.freeze({
    * 插件讨论区（giscus）。要启用评论区：在你的讨论仓库上创建 giscus 应用，把 repo /
    * repoId / category / categoryId 换成本实例真实值。占位值会让评论加载失败，但不会崩。
    * 即使不启用，也请保证这一组值对你自洽（评论组件读它）。
+   * repoId / categoryId 是 giscus 应用生成的 ID，需用 giscus 应用页面获取后填入。
    */
   giscus: {
-    repo: 'acme/acme-market',
+    repo: 'qudayan92/dsh-market',
     repoId: 'REPO_ID_HERE',
     category: 'Plugins',
     categoryId: 'CATEGORY_ID_HERE',
   },
 
   /** 收录失效时提示"去哪反馈"的主名。 */
-  feedbackHost: 'acme-plugin-catalog',
+  feedbackHost: 'qudayan92-dsh-market',
 })

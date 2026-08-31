@@ -1,6 +1,6 @@
 {
   "name": "dshmarket",
-  "description": "Acme's private plugin market inside DeepSeek Harness — browse, search, and one-click install our curated internal plugins. · Acme 私有插件市场：逛一逛，点一下，装好。",
+  "description": "Curated private plugin market inside DeepSeek Harness — browse, search, and one-click install. · 精选私有插件市场：逛一逛，点一下，装好。",
   "version": "1.35.0",
   "type": "module",
   "main": "lib/index.js",
@@ -8,9 +8,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/acme/acme-market.git"
+    "url": "git+https://github.com/qudayan92/dsh-market.git"
   },
-  "homepage": "https://plugins.acme.example",
+  "homepage": "https://github.com/qudayan92/dsh-market",
   "keywords": [
     "deepseek",
     "harness",
