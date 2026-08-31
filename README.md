@@ -77,21 +77,18 @@ Installs prefer repo-verified npm packages, then author-supplied prebuilt GitHub
 
 ## Submit your plugin
 
-**This repo is the market app, not the catalog.** The plugin list comes from the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry — to get your plugin listed in the market, open a PR **there** (one entry in the list; the site and this market pick it up automatically, usually within a day). Please don't PR plugin entries against this repo.
+**This is a private-market fork — the plugin list is your own whitelist in [private-catalog/plugins.json](private-catalog/plugins.json), not a public directory.** To list a plugin, add an entry there (schema in [private-catalog/README.md](private-catalog/README.md)) and `git push` — `publish-catalog.yml` publishes `plugins.json` + `updates.json` to your catalog host (this fork points at `qudayan92/dsh-plugin-market-catalog`). This market no longer consumes awesome-dsh-plugin, so don't submit entries there.
 
 ## Roadmap & feedback
 
-- **Bugs** go in [issues](https://github.com/dsh-market/dsh-market/issues) — attaching the market's "Export log" makes diagnosis roughly ten times faster
-- **Feature ideas** go on the [Roadmap](https://github.com/orgs/dsh-market/projects/1). Issues are kept for things that are broken, so a proposal filed as an issue gets moved there and closed; the discussion stays where you wrote it either way
-- Every roadmap item welcomes community PRs — say so on the item before starting, so two people don't build it twice
+- **Bugs** go in [issues](https://github.com/qudayan92/dsh-market/issues) — attaching the market's "Export log" makes diagnosis roughly ten times faster
+- **Feature ideas** go in issues or the repo discussions; the roadmap for a private market is yours to set
 
 ## Data source
 
-Fetched live on every open from [awesome-dsh-plugin.com/plugins.json](https://awesome-dsh-plugin.com/plugins.json) — curated entries, npm mapping, and star counts refreshed daily by CI, with no stale cache behind it. A failure reports the actual reason and elapsed time, with a Retry button.
+Fetched live on every open from your catalog URL — by default `BRAND.defaultCatalogUrl` in `src/brand.ts` (this fork points at `qudayan92/dsh-plugin-market-catalog/main/plugins.json`), with no stale catalog cache. A failure reports the actual reason and elapsed time, with a Retry button. For a sturdier host, publish the directory to a static service that supports conditional requests (ETag/Last-Modified).
 
-There is deliberately no bundled snapshot to fall back on: for a catalog that grows daily, a stale answer is not a degraded one but a wrong one — a plugin published this morning would read as "does not exist".
-
-**If that host is unreachable from your network**, point the market at a mirror instead. Set `DSHM_REGISTRY_URL` in the environment dsh runs in, to anything serving the same `plugins.json` shape:
+**If your catalog is hosted elsewhere**, override it with `DSHM_REGISTRY_URL` in the environment dsh runs in (it REPLACES the default list, it does not add to it):
 
 ```sh
 DSHM_REGISTRY_URL=https://your-mirror.example/plugins.json dsh web
@@ -129,4 +126,4 @@ dsh plugin --profile web add @liustack/modlens
 
 ## License
 
-MIT · [dshmarket.com](https://dshmarket.com)
+MIT

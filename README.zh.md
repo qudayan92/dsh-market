@@ -74,24 +74,21 @@ dsh plugin --profile web add dshmarket
 
 ## 提交你的插件
 
-**这个仓库是市场应用本身，不是插件目录。** 市场里的插件列表来自精选列表 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)——想让你的插件上架，请去**那边**提 PR（在列表里加一条即可，站点和本市场会自动收录，通常一天内生效）。请不要往本仓库提插件条目。
+**这是私有市场 fork——插件列表来自你自己的白名单 [private-catalog/plugins.json](private-catalog/plugins.json)，不是公共目录。** 要让插件上架：编辑 `private-catalog/plugins.json` 加一条（字段规范见 [private-catalog/README.md](private-catalog/README.md)），然后 `git push`——`publish-catalog.yml` 会把 `plugins.json` + `updates.json` 发布到你的目录托管地址（本 fork 指向 `qudayan92/dsh-plugin-market-catalog`）。这个市场不再消费 awesome-dsh-plugin，请别向它提条目。
 
 ## 路线图与反馈
 
-- **Bug** 提 [issue](https://github.com/dsh-market/dsh-market/issues)，附上市场页面的「导出日志」能让排查快十倍
-- **功能建议**放 [Roadmap](https://github.com/orgs/dsh-market/projects/1)。issues 只留「坏掉的东西」，所以提成 issue 的建议会被移到那边并关闭；讨论仍留在你写的地方
-- 路线图上的每一项都欢迎社区 PR——动手前在对应条目里说一声，免得两个人重复造
+- **Bug** 提 [issue](https://github.com/qudayan92/dsh-market/issues)，附上市场页面的「导出日志」能让排查快十倍
+- **功能建议**直接提 issue 或走仓库讨论；私有市场的路线图由你自定
 
 ## 数据源
 
-每次打开都实时请求 [awesome-dsh-plugin.com/plugins.json](https://awesome-dsh-plugin.com/plugins.json)——精选条目、npm 映射、star 数由 CI 每日刷新，不使用过期缓存兜底；连不上时会给出具体原因和耗时，并提供「重试」按钮。
+市场每次打开都实时请求你的目录地址——默认取 `src/brand.ts` 的 `defaultCatalogUrl`（本 fork 指向 `qudayan92/dsh-plugin-market-catalog/main/plugins.json`），不缓存过期目录；连不上时给出具体原因和耗时，并提供「重试」按钮。想要更稳定的托管，可把目录发布到 GitHub Pages 等支持条件请求（ETag/Last-Modified）的静态服务。
 
-刻意不做本地快照兜底：目录每天都在增长，过期的答案不是「差一点」而是「错的」——今早刚发布的插件会显示成「不存在」。
-
-**如果你的网络访问不了这个域名**，可以改指到镜像：在 dsh 运行的环境里设置 `DSHM_REGISTRY_URL`，指向任何提供相同 `plugins.json` 结构的地址：
+**如果你的目录托管在别处**，在 dsh 运行的环境里用 `DSHM_REGISTRY_URL` 覆盖（整体替换默认清单，不是叠加）：
 
 ```sh
-DSHM_REGISTRY_URL=https://your-mirror.example/plugins.json dsh web
+DSHM_REGISTRY_URL=https://your-host/plugins.json dsh web
 ```
 
 ## 友情链接
@@ -126,4 +123,4 @@ dsh plugin --profile web add @liustack/modlens
 
 ## 许可
 
-MIT · [dshmarket.com](https://dshmarket.com)
+MIT
