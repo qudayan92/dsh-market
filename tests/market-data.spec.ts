@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  entryForDep, extractReadmeImageCandidates, extractReadmeImages, FEATURED_THEMES, featuredTheme, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, isoWeek, looksTerminal, matchInstalledName, nameCollisionCounts, orderedCategories, pageItems, pluginCategories, previewDimensionScore, qualityScore, rankThemeScreenshots, safeScreenshots, themePlugins, themeTags, themeTagsOf, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
+  entryForDep, extractReadmeImageCandidates, extractReadmeImages, FEATURED_THEMES, featuredTheme, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, isoWeek, looksTerminal, matchInstalledName, orderedCategories, pageItems, pluginCategories, previewDimensionScore, rankThemeScreenshots, safeScreenshots, themePlugins, themeTags, themeTagsOf, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
 import type { RegistryPlugin, ScreenshotCandidate } from '../src/client/market-data.ts'
 
 function plugin(partial: Partial<RegistryPlugin>): RegistryPlugin {
@@ -246,14 +246,56 @@ describe('discover list (visiblePlugins)', () => {
     plugin({ name: 'no-stars', owner: 'dave', category: 'memory', added: '2026-07-01', description: { en: 'Vector memory store' } }),
   ]
 
-  it('searches across name, owner, and the localized description, case-insensitively', () => {
+  it('searches package identities, owners, and every localized description case-insensitively', () => {
     expect(visiblePlugins(CATALOG, { category: 'all', query: 'LOOP', lang: 'en', sort: 'x' }).map(p => p.name)).toEqual(['dsh-loop'])
     expect(visiblePlugins(CATALOG, { category: 'all', query: 'carol', lang: 'en', sort: 'x' }).map(p => p.name)).toEqual(['whale-skin'])
-    // zh UI searches the zh description; en falls back when zh is absent.
+    // The current locale ranks higher, but other translations remain searchable.
     expect(visiblePlugins(CATALOG, { category: 'all', query: '通知', lang: 'zh', sort: 'x' }).map(p => p.name)).toEqual(['dsh-notify'])
+    expect(visiblePlugins(CATALOG, { category: 'all', query: '循环', lang: 'en', sort: 'x' }).map(p => p.name)).toEqual(['dsh-loop'])
     expect(visiblePlugins(CATALOG, { category: 'all', query: 'vector', lang: 'zh', sort: 'x' }).map(p => p.name)).toEqual(['no-stars'])
+    expect(visiblePlugins([
+      plugin({ name: 'friendly-title', npm: '@scope/dsh-mcp-tools' }),
+    ], { category: 'all', query: 'mcp tools', lang: 'en', sort: 'x' }).map(p => p.name)).toEqual(['friendly-title'])
     // Empty query = everything, registry order preserved.
     expect(visiblePlugins(CATALOG, { category: 'all', query: '  ', lang: 'en', sort: 'x' })).toHaveLength(4)
+  })
+
+  it('ranks package-name relevance before popularity and uses the selected sort as a tie-breaker', () => {
+    const rows: RegistryPlugin[] = [
+      plugin({ name: 'popular-agent', downloads: 500_000, description: { en: 'MCP integration for agents' } }),
+      plugin({ name: 'dsh-mcp-panel', downloads: 50 }),
+      plugin({ name: 'dsh-mcp-connector', downloads: 3_200 }),
+    ]
+    expect(visiblePlugins(rows, {
+      category: 'all', query: 'mcp', lang: 'en', sort: 'downloads-desc',
+    }).map(p => p.name)).toEqual([
+      'dsh-mcp-connector',
+      'dsh-mcp-panel',
+      'popular-agent',
+    ])
+  })
+
+  it('normalizes punctuation and keeps exact package names ahead of longer prefixes', () => {
+    const rows: RegistryPlugin[] = [
+      plugin({ name: 'dsh-mcp-connector-guide', downloads: 50_000 }),
+      plugin({ name: 'dsh-mcp-connector', downloads: 10 }),
+    ]
+    expect(visiblePlugins(rows, {
+      category: 'all', query: 'DSH MCP connector', lang: 'en', sort: 'downloads-desc',
+    }).map(p => p.name)).toEqual(['dsh-mcp-connector', 'dsh-mcp-connector-guide'])
+  })
+
+  it('treats punctuation-only input as no search and keeps multi-word matches within one field', () => {
+    const rows: RegistryPlugin[] = [
+      plugin({ name: 'task-helper', description: { en: 'Runner utilities' } }),
+      plugin({ name: 'workflow-loop', description: { en: 'Task runner for projects' } }),
+    ]
+    expect(visiblePlugins(rows, {
+      category: 'all', query: '---', lang: 'en', sort: 'x',
+    })).toHaveLength(2)
+    expect(visiblePlugins(rows, {
+      category: 'all', query: 'task runner', lang: 'en', sort: 'x',
+    }).map(p => p.name)).toEqual(['workflow-loop'])
   })
 
   it('filters by any category and keeps legacy string categories working', () => {
@@ -323,41 +365,6 @@ describe('discover list (visiblePlugins)', () => {
     ]
     expect(visiblePlugins(rows, { category: 'all', query: '', lang: 'en', sort: 'downloads-desc' }).map(p => p.name))
       .toEqual(['has-downloads', 'zero-downloads', 'no-npm-package'])
-  })
-
-  it('sorts by quality, demoting fragile git-only and collided names', () => {
-    // Array order deliberately disagrees with the quality order on every axis
-    // so a sort that silently keeps registry order would fail by coincidence.
-    const list: RegistryPlugin[] = [
-      plugin({ name: 'q-gh-ok', stars: 40, description: { en: 'x'.repeat(20), zh: 'x'.repeat(20) } }),
-      plugin({ name: 'q-subpath', url: 'https://github.com/o/q-subpath/tree/main/packages/sub', stars: 999 }),
-      plugin({ name: 'q-npm', npm: 'q-npm', downloads: 100, stars: 5, description: { en: 'x'.repeat(20), zh: 'x'.repeat(20) } }),
-    ]
-    // npm package > git root > monorepo #path: subpath, even when the subpath
-    // has far more stars — install reliability is what the quality sort is for.
-    expect(visiblePlugins(list, { category: 'all', query: '', lang: 'en', sort: 'quality-desc' }).map(p => p.name))
-      .toEqual(['q-npm', 'q-gh-ok', 'q-subpath'])
-    expect(visiblePlugins(list, { category: 'all', query: '', lang: 'en', sort: 'quality-asc' }).map(p => p.name))
-      .toEqual(['q-subpath', 'q-gh-ok', 'q-npm'])
-  })
-
-  it('qualityScore rewards an easy install path and penalizes name collisions', () => {
-    // Install path dominates: npm > prebuilt release tarball > git root >
-    // monorepo #path: subpath (the most fragile source checkout).
-    expect(qualityScore(plugin({ npm: 'x' })))
-      .toBeGreaterThan(qualityScore(plugin({ tarball: 'https://github.com/o/x/releases/download/v1/x.tgz' })))
-    expect(qualityScore(plugin({ tarball: 'https://github.com/o/x/releases/download/v1/x.tgz' })))
-      .toBeGreaterThan(qualityScore(plugin({ stars: 100 })))
-    expect(qualityScore(plugin({ stars: 100 })))
-      .toBeGreaterThan(qualityScore(plugin({ url: 'https://github.com/o/x/tree/main/packages/x', stars: 100 })))
-
-    // A display name shared by two entries is confusing — it is penalized.
-    const dup = [
-      plugin({ name: 'dup', npm: 'dup', downloads: 10 }),
-      plugin({ name: 'dup', npm: 'dup2', downloads: 10 }),
-    ]
-    expect(nameCollisionCounts(dup).get('dup')).toBe(2)
-    expect(qualityScore(plugin({ npm: 'x' }), 2)).toBeLessThan(qualityScore(plugin({ npm: 'x' }), 1))
   })
 
   it('themePlugins lists only themes, most-starred first', () => {

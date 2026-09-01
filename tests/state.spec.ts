@@ -166,6 +166,82 @@ describe('market state.json (#60)', () => {
   })
 })
 
+describe('a partial write must not erase the rest of the state (#435)', () => {
+  it('keeps the channel and region a plugin toggle knows nothing about', () => {
+    // Five call sites in routes.ts write `{ disabled, groups, groupOrder }`
+    // — everything a toggle knows. Before this, that shape silently threw
+    // away the update channel and download region, both of which the user
+    // picked deliberately in the settings card. Neither has an "unchoose"
+    // path: once set they only move to another value, so an absent one is
+    // always the caller having nothing to say.
+    const dir = stateDir()
+    writeMarketState(dir, {
+      disabled: new Set(), groups: {}, groupOrder: [],
+      notes: { alpha: 'my note' }, channel: 'beta', region: 'china',
+    })
+
+    const before = readMarketState(dir)
+    writeMarketState(dir, { disabled: new Set(['x']), groups: before.groups, groupOrder: before.groupOrder })
+
+    const after = readMarketState(dir)
+    expect(after.channel).toBe('beta')
+    expect(after.region).toBe('china')
+    expect(after.notes).toEqual({ alpha: 'my note' })
+    expect([...after.disabled]).toEqual(['x'])
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('still lets the last note be deleted', () => {
+    // The preserve rule must not become "notes can never be cleared". The
+    // note route re-reads first, so its empty object is a real statement
+    // about the world rather than a stale one.
+    const dir = stateDir()
+    writeMarketState(dir, { disabled: new Set(), groups: {}, groupOrder: [], notes: { only: 'note' } })
+    const current = readMarketState(dir)
+    writeMarketState(dir, { ...current, notes: {} })
+
+    expect(readMarketState(dir).notes).toEqual({})
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('leaves an unchosen channel and region unset rather than inventing one', () => {
+    // An absent region is what makes the probe run at boot; writing a
+    // default here would mean it never does.
+    const dir = stateDir()
+    writeMarketState(dir, { disabled: new Set(['a']), groups: {}, groupOrder: [] })
+
+    const written = JSON.parse(readFileSync(join(dir, '.dsh-market', 'state.json'), 'utf8')) as Record<string, unknown>
+    expect('channel' in written).toBe(false)
+    expect('region' in written).toBe(false)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('lets a manual region choice clear the automatic-region marker', () => {
+    const dir = stateDir()
+    try {
+      writeMarketState(dir, {
+        disabled: new Set(), groups: {}, groupOrder: [], region: 'china', regionAuto: true,
+      })
+
+      // Partial writers still omit the field and must preserve the marker.
+      writeMarketState(dir, { disabled: new Set(['dsh-loop']), groups: {}, groupOrder: [] })
+      expect(readMarketState(dir).regionAuto).toBe(true)
+
+      // The manual-region route spreads the current state, changes region,
+      // and explicitly clears regionAuto before writing.
+      const current = readMarketState(dir)
+      writeMarketState(dir, { ...current, region: 'global', regionAuto: undefined })
+
+      const written = JSON.parse(readFileSync(join(dir, '.dsh-market', 'state.json'), 'utf8')) as Record<string, unknown>
+      expect(written.region).toBe('global')
+      expect('regionAuto' in written).toBe(false)
+      expect(readMarketState(dir).regionAuto).toBeUndefined()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('group CRUD (groups.ts)', () => {
   it('create/rename/delete keep groups and order consistent', () => {
     const state = { groups: {}, groupOrder: [] }

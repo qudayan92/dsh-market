@@ -331,6 +331,8 @@ export interface PluginCommandRuntime {
   probePnpm(): Promise<boolean>
   provisionPnpm(): Promise<{ ok: boolean; hint?: string }>
   cancelActive(): boolean
+  /** Whether this host can execute an immutable rollback add target. */
+  supportsExactRollbackTarget?(target: string): boolean
 }
 
 /** One running package operation, however it was started. */
@@ -603,7 +605,10 @@ export async function provisionPnpm(): Promise<{ ok: boolean; hint?: string }> {
   // instead of telling the user a successful install failed.
   if (npm.code === 0 || corepack.code === 0) {
     const prefix = await runQuiet('npm', ['prefix', '-g'], 30 * 1000)
-    const bin = prefix.code === 0 ? join(prefix.output.trim().split('\n').pop() ?? '', 'bin') : ''
+    const root = prefix.code === 0 ? prefix.output.trim().split('\n').pop() ?? '' : ''
+    // `npm prefix -g` already is the executable directory on Windows
+    // (`pnpm.cmd` lives directly under it). Unix keeps shims in `bin/`.
+    const bin = root === '' ? '' : process.platform === 'win32' ? root : join(root, 'bin')
     if (bin !== '' && isAbsolute(bin) && !extraPathDirs.includes(bin)) {
       extraPathDirs.push(bin)
       logEvent('info', 'setup-pnpm', `added npm's global bin to the probe path: ${bin}`)
@@ -1053,6 +1058,11 @@ export function createDesktopPluginRuntime(
 
   return {
     runPlugin,
+    // Anywhere Labs' optional external boundary accepts exact npm targets
+    // only. Every Desktop host without that boundary retains the ordinary
+    // CLI grammar, including immutable Git and archive targets.
+    supportsExactRollbackTarget: target => TARGET_RE.test(target)
+      && (service.runExternalMarketPluginInstall === undefined || EXACT_NPM_TARGET_RE.test(target)),
     // The service is backed by Desktop's packaged pnpm; system discovery and
     // global provisioning are neither needed nor allowed in this mode.
     probePnpm: () => Promise.resolve(true),

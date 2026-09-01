@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { detectedSupervisor, respawnInvocation, restartAllowed, trustedDownloadRequest, trustedRestartRequest } from '../src/restart.ts'
+import { detectedDebugger, detectedSupervisor, respawnInvocation, restartAllowed, trustedDownloadRequest, trustedRestartRequest } from '../src/restart.ts'
 
 const LAUNCH = { file: 'C:\\Program Files\\nodejs\\node.exe', args: ['--import', 'tsx/esm', 'bin.ts', '--profile', 'web'], viaShell: false }
 
@@ -29,6 +29,11 @@ describe('respawnInvocation (#40)', () => {
   it('escapes embedded single quotes PowerShell-style (doubled)', () => {
     const spawned = respawnInvocation({ file: "C:\\it's here\\dsh.cmd", args: [], viaShell: true }, 'win32')
     expect(spawned.args[4]).toBe("& 'C:\\it''s here\\dsh.cmd'")
+  })
+
+  it('names the cmd shim explicitly so Restricted policy cannot select dsh.ps1 (#397)', () => {
+    const spawned = respawnInvocation({ file: 'dsh', args: ['web'], viaShell: true }, 'win32')
+    expect(spawned.args[4]).toBe("& 'dsh.cmd' 'web'")
   })
 
   it('keeps the plain detached spawn on POSIX', () => {
@@ -163,5 +168,35 @@ describe('supervisor detection gates self-restart (#229)', () => {
     expect(restartAllowed({ allowRestart: true }, { INVOCATION_ID: 'abc123' }, 1)).toBe(true)
     // ...and the documented opt-out still works with no supervisor detected.
     expect(restartAllowed({ allowRestart: false }, {}, 4242)).toBe(false)
+  })
+})
+
+describe('debugger detection gates self-restart (#447)', () => {
+  it('names inspector when inspector.url() is set', () => {
+    expect(detectedDebugger('ws://127.0.0.1:9229/uuid', [], '')).toBe('inspector')
+  })
+
+  it('detects inspect-family flags in execArgv by token prefix', () => {
+    expect(detectedDebugger(undefined, ['--inspect=9229'], '')).toBe('inspector')
+    expect(detectedDebugger(undefined, ['--inspect-brk'], '')).toBe('inspector')
+    expect(detectedDebugger(undefined, ['--inspect-port=9230'], '')).toBe('inspector')
+    expect(detectedDebugger(undefined, ['--inspect-wait'], '')).toBe('inspector')
+    expect(detectedDebugger(undefined, ['--debug-brk'], '')).toBe('inspector')
+  })
+
+  it('detects inspect flags in NODE_OPTIONS', () => {
+    expect(detectedDebugger(undefined, [], '--inspect=9229')).toBe('inspector')
+    expect(detectedDebugger(undefined, [], 'NODE_OPTIONS unrelated --inspect-brk')).toBe('inspector')
+  })
+
+  it('does not false-positive on unrelated argv tokens', () => {
+    expect(detectedDebugger(undefined, ['--enable-source-maps'], '')).toBeNull()
+    expect(detectedDebugger(undefined, ['/path/to/inspect-tool.js'], '')).toBeNull()
+    expect(detectedDebugger(undefined, [], '')).toBeNull()
+  })
+
+  it('does not fold into restartAllowed — explicit allowRestart stays true', () => {
+    expect(restartAllowed({ allowRestart: true }, {}, 4242)).toBe(true)
+    expect(detectedDebugger('ws://127.0.0.1:9229/uuid', [], '')).toBe('inspector')
   })
 })

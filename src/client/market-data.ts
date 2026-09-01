@@ -120,6 +120,8 @@ export interface UpdateStatus {
       the range between them in whichever form reads best. */
   current?: string | null
   latest?: string | null
+  /** Updating this local package switches it to its matched online release. */
+  restoreRequired?: boolean
 }
 
 /** Poll payload from /dsh-market/status. */
@@ -160,6 +162,12 @@ export interface MarketStatus {
    * button is missing instead of just omitting it (#229).
    */
   supervisor?: string | null
+  /**
+   * Debugger latch (#447): `'inspector'` when the host is under a debugger,
+   * or null/absent otherwise. Kept separate from `supervisor` and from
+   * `restart` so `allowRestart` settings are not conflated with debug state.
+   */
+  debugger?: string | null
 }
 
 /** Post-install activation state (P0-2), per installed package. */
@@ -258,7 +266,7 @@ export function looksTerminal(plugin: RegistryPlugin, lang: string): boolean {
 }
 
 /** Sortable field for the Discover list. */
-export type SortField = 'downloads' | 'stars' | 'added' | 'quality'
+export type SortField = 'downloads' | 'stars' | 'added'
 /** Sort direction: desc = newest/most first, asc = oldest/least first. */
 export type SortDir = 'desc' | 'asc'
 /** Combined sort key sent to visiblePlugins. */
@@ -311,84 +319,88 @@ export function isMarketItself(plugin: Pick<RegistryPlugin, 'name' | 'npm'>): bo
   return plugin.name === 'dsh-market' || plugin.npm === 'dshmarket'
 }
 
-/**
- * Display-name collision counts across a catalog (WS-2). Same-named plugins
- * from different authors are legitimate and distinct (validate-registry W1),
- * but a heavily shared name is confusing to browse, so the quality sort
- * penalizes it mildly.
- */
-export function nameCollisionCounts(plugins: readonly RegistryPlugin[]): Map<string, number> {
-  const counts = new Map<string, number>()
-  for (const p of plugins) counts.set(p.name, (counts.get(p.name) ?? 0) + 1)
-  return counts
+/** Normalize punctuation-separated package names and human text alike. */
+function searchText(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ')
 }
 
 /**
- * A maintainer-quality score, higher is better. It weighs, in order of
- * importance: the install path (WS-3 — a published npm package or prebuilt
- * release is far more likely to install cleanly than a git `#path:` source
- * checkout), the presence of real maintenance/popularity evidence,
- * presentation quality, deprecation, and display-name collisions (WS-2).
- *
- * `null` is respected as a legitimate value (see `RegistryPlugin.downloads`):
- * a missing count is a coverage gap, never a fabricated zero — a github:-only
- * entry already earns a low install score, and we never read a missing number
- * as "0". `sameNameCount` is how many catalog entries share this display
- * name; pass 1 for a unique name. Pure and deterministic, so tests can pin
- * the ordering and the discover list can sort on it.
+ * Normalized catalog fields are immutable for the lifetime of one registry
+ * entry. Keep them with that entry so typing does not repeat unicode
+ * normalization across the whole catalog, while replaced catalogs remain
+ * collectible. The raw query is intentionally not cached: it is normalized
+ * once per call and would otherwise grow the cache on every keystroke.
  */
-export function qualityScore(plugin: RegistryPlugin, sameNameCount = 1): number {
-  let score = 0
-  if (plugin.npm) score += 45
-  else if (plugin.tarball) score += 32
-  else if (typeof plugin.url === 'string' && /\/tree\//.test(plugin.url)) score += 10
-  else score += 16
-  if (typeof plugin.downloads === 'number') score += plugin.downloads > 0 ? 18 : 3
-  if (typeof plugin.stars === 'number') score += plugin.stars > 0 ? 12 : 2
-  if (plugin.screenshots && plugin.screenshots.length > 0) score += 6
-  const en = plugin.description?.en ?? ''
-  const zh = plugin.description?.zh ?? ''
-  if (en.length >= 20 && zh.length >= 20) score += 4
-  if (plugin.deprecated) score -= 30
-  if (sameNameCount > 1) score -= (sameNameCount - 1) * 5
-  return score
+const pluginSearchTextCache = new WeakMap<RegistryPlugin, Map<string, string>>()
+
+function cachedPluginSearchText(plugin: RegistryPlugin, value: string): string {
+  let fields = pluginSearchTextCache.get(plugin)
+  if (fields === undefined) {
+    fields = new Map()
+    pluginSearchTextCache.set(plugin, fields)
+  }
+  const hit = fields.get(value)
+  if (hit !== undefined) return hit
+  const normalized = searchText(value)
+  fields.set(value, normalized)
+  return normalized
 }
 
 /**
- * Score one plugin relative to its display-name collision count in `counts`.
- * `nameCollisionCounts` returns 1 (unique) when the name is absent, so a
- * caller can pass the map straight through.
+ * Relevance within one field. Exact and prefix matches beat phrase matches;
+ * for a multi-word query every word must occur in the same field.
  */
-function qualityCompare(plugin: RegistryPlugin, counts: Map<string, number>): number {
-  return qualityScore(plugin, counts.get(plugin.name) ?? 1)
+function fieldRelevance(
+  plugin: RegistryPlugin,
+  value: string | undefined,
+  query: string,
+  tokens: string[],
+  weight: number,
+): number {
+  if (!value) return 0
+  const text = cachedPluginSearchText(plugin, value)
+  if (text === '' || !tokens.every(token => text.includes(token))) return 0
+  if (text === query) return weight + 300
+  if (text.startsWith(query)) return weight + 250
+  if (text.includes(query)) return weight + 200
+  return weight + 150
 }
 
 /**
- * The discover list: category filter, then the published-within window, then
- * search across name / owner / localized description / category ids and
- * localized category labels, then the selected sort.
- * Pure — the section renders exactly this.
+ * Search ranking is field-aware rather than a popularity-only filter:
+ * package identities outrank owners, descriptions, and categories. The
+ * selected popularity/date sort remains the tie-breaker between equally
+ * relevant entries.
  */
-export function visiblePlugins(plugins: RegistryPlugin[], options: ListQuery): RegistryPlugin[] {
-  const query = options.query.trim().toLowerCase()
-  const list = plugins.filter((p) => {
-    if (isMarketItself(p)) return false
-    const categories = pluginCategories(p)
-    if (options.category !== 'all' && !categories.includes(options.category)) return false
-    if (options.sinceDays !== undefined && !withinDays(p.added, options.sinceDays)) return false
-    if (query === '') return true
-    const desc = (p.description && (p.description[options.lang] || p.description.en)) || ''
-    const categoryMatches = categories.some((category) => {
-      if (category.toLowerCase().includes(query)) return true
-      return Object.values(options.categories?.[category] ?? {}).some(
-        label => typeof label === 'string' && label.toLowerCase().includes(query),
-      )
-    })
-    return p.name.toLowerCase().includes(query)
-      || p.owner.toLowerCase().includes(query)
-      || desc.toLowerCase().includes(query)
-      || categoryMatches
-  })
+function pluginRelevance(
+  plugin: RegistryPlugin,
+  query: string,
+  tokens: string[],
+  lang: string,
+  categories: Record<string, LocalizedText> | undefined,
+): number {
+  const descriptions = plugin.description ?? {}
+  const preferredLocale = descriptions[lang] ? lang : descriptions.en ? 'en' : null
+  const preferredDescription = descriptions[lang] || descriptions.en
+  const otherDescriptions = Object.entries(descriptions)
+    .filter(([locale, value]) => locale !== preferredLocale && typeof value === 'string')
+    .map(([, value]) => value)
+  const categoryIds = pluginCategories(plugin)
+  const categoryLabels = categoryIds.flatMap(category => Object.values(categories?.[category] ?? {}))
+
+  return Math.max(
+    fieldRelevance(plugin, plugin.name, query, tokens, 700),
+    fieldRelevance(plugin, plugin.npm, query, tokens, 700),
+    fieldRelevance(plugin, plugin.owner, query, tokens, 400),
+    fieldRelevance(plugin, preferredDescription, query, tokens, 280),
+    ...otherDescriptions.map(value => fieldRelevance(plugin, value, query, tokens, 240)),
+    ...categoryIds.map(value => fieldRelevance(plugin, value, query, tokens, 180)),
+    ...categoryLabels.map(value => fieldRelevance(plugin, value, query, tokens, 180)),
+  )
+}
+
+/** Compare two already-filtered entries using the user's selected sort. */
+function comparePlugins(a: RegistryPlugin, b: RegistryPlugin, sort: string): number {
   // A github:-only entry has no npm package and therefore no download count
   // at all — that is a coverage gap, not a "0 downloads" verdict, and must
   // not be read as less popular than a package that genuinely has zero.
@@ -396,43 +408,49 @@ export function visiblePlugins(plugins: RegistryPlugin[], options: ListQuery): R
   // direction, and are ordered against each other by star count — the only
   // signal available for them — rather than left in an arbitrary tie.
   const hasDownloads = (p: RegistryPlugin): p is RegistryPlugin & { downloads: number } => typeof p.downloads === 'number'
-  if (options.sort === 'downloads-desc') {
-    return [...list].sort((a, b) => {
-      if (hasDownloads(a) && hasDownloads(b)) return b.downloads - a.downloads
-      if (hasDownloads(a)) return -1
-      if (hasDownloads(b)) return 1
-      return (b.stars ?? -1) - (a.stars ?? -1)
-    })
+  if (sort === 'downloads-desc') {
+    if (hasDownloads(a) && hasDownloads(b)) return b.downloads - a.downloads
+    if (hasDownloads(a)) return -1
+    if (hasDownloads(b)) return 1
+    return (b.stars ?? -1) - (a.stars ?? -1)
   }
-  if (options.sort === 'downloads-asc') {
-    return [...list].sort((a, b) => {
-      if (hasDownloads(a) && hasDownloads(b)) return a.downloads - b.downloads
-      if (hasDownloads(a)) return -1
-      if (hasDownloads(b)) return 1
-      return (a.stars ?? -1) - (b.stars ?? -1)
-    })
+  if (sort === 'downloads-asc') {
+    if (hasDownloads(a) && hasDownloads(b)) return a.downloads - b.downloads
+    if (hasDownloads(a)) return -1
+    if (hasDownloads(b)) return 1
+    return (a.stars ?? -1) - (b.stars ?? -1)
   }
-  if (options.sort === 'stars-desc') {
-    return [...list].sort((a, b) => (b.stars ?? -1) - (a.stars ?? -1))
-  }
-  if (options.sort === 'stars-asc') {
-    return [...list].sort((a, b) => (a.stars ?? -1) - (b.stars ?? -1))
-  }
-  if (options.sort === 'quality-desc') {
-    const counts = nameCollisionCounts(plugins)
-    return [...list].sort((a, b) => qualityCompare(b, counts) - qualityCompare(a, counts))
-  }
-  if (options.sort === 'quality-asc') {
-    const counts = nameCollisionCounts(plugins)
-    return [...list].sort((a, b) => qualityCompare(a, counts) - qualityCompare(b, counts))
-  }
-  if (options.sort === 'added-desc') {
-    return [...list].sort((a, b) => String(b.added).localeCompare(String(a.added)))
-  }
-  if (options.sort === 'added-asc') {
-    return [...list].sort((a, b) => String(a.added).localeCompare(String(b.added)))
-  }
-  return list
+  if (sort === 'stars-desc') return (b.stars ?? -1) - (a.stars ?? -1)
+  if (sort === 'stars-asc') return (a.stars ?? -1) - (b.stars ?? -1)
+  if (sort === 'added-desc') return String(b.added).localeCompare(String(a.added))
+  if (sort === 'added-asc') return String(a.added).localeCompare(String(b.added))
+  return 0
+}
+
+/**
+ * The discover list: category filter, then the published-within window, then
+ * relevance-ranked search across package identity / owner / every localized
+ * description / category ids and labels. With no search, only the selected
+ * sort applies, preserving the existing discover-list behaviour.
+ * Pure — the section renders exactly this.
+ */
+export function visiblePlugins(plugins: RegistryPlugin[], options: ListQuery): RegistryPlugin[] {
+  const query = searchText(options.query)
+  const tokens = query.split(' ').filter(Boolean)
+  const scored = plugins.flatMap((plugin, index) => {
+    if (isMarketItself(plugin)) return []
+    const categories = pluginCategories(plugin)
+    if (options.category !== 'all' && !categories.includes(options.category)) return []
+    if (options.sinceDays !== undefined && !withinDays(plugin.added, options.sinceDays)) return []
+    const relevance = query === '' ? 0 : pluginRelevance(plugin, query, tokens, options.lang, options.categories)
+    return relevance === 0 && query !== '' ? [] : [{ plugin, relevance, index }]
+  })
+
+  return scored.sort((a, b) =>
+    b.relevance - a.relevance
+    || comparePlugins(a.plugin, b.plugin, options.sort)
+    || a.index - b.index,
+  ).map(row => row.plugin)
 }
 
 /** The themes tab listing: theme category only, most-starred first. */
