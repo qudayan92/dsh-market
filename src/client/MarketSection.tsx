@@ -42,12 +42,12 @@ import { clearSettled, drop, enqueue, patch as patchRecord, recordForUrl } from 
 import type { OperationRecord } from './operations.ts'
 import { Diagnostics } from './Diagnostics.tsx'
 import {
-  api, avatarColor, entryForDep, githubProxyInUse, githubUrl, groupSwitchState, humanOutput, installedForCatalog, isInstalled, looksTerminal, matchInstalledName, orderedCategories, pluginCategories,
-  formatCount, pageItems, pluginName, pluginScreenshotCandidates, pluginScreenshots, rankThemeScreenshots, readSession, safeScreenshots, setGithubProxy, themePlugins as themePluginsOf, themeSwatch, TIME_RANGE_DAYS, visiblePlugins,
+  api, avatarColor, entryForDep, featuredTheme, githubProxyInUse, githubUrl, groupSwitchState, humanOutput, installedForCatalog, isInstalled, looksTerminal, matchInstalledName, orderedCategories, pluginCategories,
+  formatCount, pageItems, pluginName, pluginScreenshotCandidates, pluginScreenshots, rankThemeScreenshots, readSession, safeScreenshots, setGithubProxy, themePlugins as themePluginsOf, themeSwatch, themeTags, themeTagsOf, TIME_RANGE_DAYS, visiblePlugins,
 } from './market-data.ts'
 import type {
 ActivationInfo, ActivationState, GistExportResult, InstalledMap, InstalledRepoHints, InstalledRepoIdentities, MarketStatus, Registry, RegistryPlugin,
-  ScreenshotCandidate, ScreenshotMeasurement, SharedHostPackageDependencyFinding, SortDir, SortField, ThemeSnapshot, TimeRange, Translate, UpdateStatus,
+  ScreenshotCandidate, ScreenshotMeasurement, SharedHostPackageDependencyFinding, SortDir, SortField, ThemeDef, ThemeSnapshot, ThemeTag, TimeRange, Translate, UpdateStatus,
 } from './market-data.ts'
 
 function isHostDependencyFinding(value: unknown): value is SharedHostPackageDependencyFinding {
@@ -1363,6 +1363,8 @@ export function MarketSection(props: MarketSectionProps) {
   const [themeSortField, setThemeSortField] = useState<SortField>('downloads')
   const [themeSortDir, setThemeSortDir] = useState<SortDir>('desc')
   const [themeTimeRange, setThemeTimeRange] = useState<TimeRange>('all')
+  /** Themes tab style tag filter ('all' = every theme). */
+  const [themeTag, setThemeTag] = useState<ThemeTag | 'all'>('all')
   /** WebDAV provider-preset dropdown (primitives Menu). */
   const [presetOpen, setPresetOpen] = useState(false)
   /** Install-command disclosure inside the confirm dialog. */
@@ -1724,7 +1726,7 @@ export function MarketSection(props: MarketSectionProps) {
     const el = bodyRef.current
     if (el !== null) el.scrollTop = 0
     setShowTop(false)
-  }, [tab, q, cat, sortField, sortDir, timeRange, qThemes, themeSortField, themeSortDir, themeTimeRange, qInstalled, installedView])
+  }, [tab, q, cat, sortField, sortDir, timeRange, qThemes, themeSortField, themeSortDir, themeTimeRange, themeTag, qInstalled, installedView])
 
   const plugins = useMemo(
     () => (data === null ? [] : visiblePlugins(data.plugins, {
@@ -1742,10 +1744,10 @@ export function MarketSection(props: MarketSectionProps) {
       category: 'theme', query: qThemes, lang, categories: data.categories,
       sort: `${themeSortField}-${themeSortDir}`,
       sinceDays: themeTimeRange === 'all' ? undefined : TIME_RANGE_DAYS[themeTimeRange],
-    })),
-    [data, qThemes, lang, themeSortField, themeSortDir, themeTimeRange])
+    }).filter(p => themeTag === 'all' || themeTags(p).includes(themeTag))),
+    [data, qThemes, lang, themeSortField, themeSortDir, themeTimeRange, themeTag])
   const themePagination = usePagination(
-    themePlugins.length, [qThemes, themeSortField, themeSortDir, themeTimeRange], scrollToTop)
+    themePlugins.length, [qThemes, themeSortField, themeSortDir, themeTimeRange, themeTag], scrollToTop)
   const themePagePlugins = themePlugins.slice(
     (themePagination.currentPage - 1) * themePagination.pageSize, themePagination.currentPage * themePagination.pageSize)
 
@@ -2873,6 +2875,66 @@ export function MarketSection(props: MarketSectionProps) {
 
   const installedNameOf = (p: RegistryPlugin) => matchInstalledName(p, installed, repoIdentities, data?.plugins, repoHints)
 
+  // Try-on (试穿): hovering a registered theme's card paints its tokens onto
+  // the document root as inline CSS variables, so the whole page — not just
+  // the card — wears the theme while the pointer is over it. Inline style
+  // beats every stylesheet rule, and removing those variables restores the
+  // real theme exactly. The persisted preference is never touched, so a
+  // refresh mid-try-on lands on the user's actual theme. Only themes with
+  // real tokens can try on; wallpaper-only skins keep their screenshot.
+  const tryOnVarsRef = useRef<string[] | null>(null)
+  const tryOnTimerRef = useRef<number | null>(null)
+
+  const applyTryOn = (def: ThemeDef | null) => {
+    if (tryOnVarsRef.current !== null) {
+      for (const name of tryOnVarsRef.current) document.documentElement.style.removeProperty(name)
+      tryOnVarsRef.current = null
+    }
+    if (def === null || def.tokens === undefined) return
+    const keys: string[] = []
+    for (const [name, value] of Object.entries(def.tokens)) {
+      if (value === undefined) continue
+      document.documentElement.style.setProperty(name, value)
+      keys.push(name)
+    }
+    tryOnVarsRef.current = keys
+  }
+
+  // Debounced: a sweep across a row of cards must not repaint the page for
+  // every intermediate card — only a genuine hover (250ms) applies, and a
+  // fast leave (120ms) restores before the next card's delay ends.
+  const scheduleTryOn = (def: ThemeDef | null) => {
+    if (tryOnTimerRef.current !== null) { clearTimeout(tryOnTimerRef.current); tryOnTimerRef.current = null }
+    tryOnTimerRef.current = window.setTimeout(() => {
+      tryOnTimerRef.current = null
+      applyTryOn(def)
+    }, def === null ? 120 : 250)
+  }
+
+  // The registered theme a catalog card can try on: installed (or bundle-
+  // layer) and carrying tokens. The official light/dark pair is excluded —
+  // Appearance already switches those, and trying them on buys nothing.
+  const tryOnDefOf = (p: RegistryPlugin): ThemeDef | null => {
+    if (themeSnap === null) return null
+    const instName = installedNameOf(p)
+    const ids = [instName, p.name, p.npm].filter((v): v is string => typeof v === 'string' && v !== '')
+    return themeSnap.themes.find(def => {
+      if (def.id === 'light' || def.id === 'dark') return false
+      if (def.tokens === undefined) return false
+      return ids.includes(def.id)
+    }) ?? null
+  }
+
+  // Leaving the tab (or unmounting mid-try-on) must not leave the page
+  // wearing a theme the user never chose.
+  useEffect(() => () => {
+    if (tryOnTimerRef.current !== null) { clearTimeout(tryOnTimerRef.current); tryOnTimerRef.current = null }
+    if (tryOnVarsRef.current !== null) {
+      for (const name of tryOnVarsRef.current) document.documentElement.style.removeProperty(name)
+      tryOnVarsRef.current = null
+    }
+  }, [])
+
   // Plugins loaded at boot (bundle-layer skins) aren't in the shim list but
   // are just as live; the boot manifest is the page's own record of them.
   const bootEntries = (typeof window !== 'undefined' && window.__DSH_BOOT__ && Array.isArray(window.__DSH_BOOT__.entries))
@@ -2896,9 +2958,18 @@ export function MarketSection(props: MarketSectionProps) {
       && (skins.includes(instName) || bootEntries.some(e => e.id === instName))
       && !effectiveDisabledSet.has(instName)
 
+    const tryOnDef = tryOnDefOf(p)
     return (
-      <article key={p.url} className={blocked ? `${css.themeCard} ${css.cardBlocked}` : css.themeCard}>
+      <article
+        key={p.url}
+        className={blocked ? `${css.themeCard} ${css.cardBlocked}` : css.themeCard}
+        onMouseEnter={() => scheduleTryOn(tryOnDef)}
+        onMouseLeave={() => scheduleTryOn(null)}
+        onFocus={() => scheduleTryOn(tryOnDef)}
+        onBlur={() => scheduleTryOn(null)}
+      >
         <ThemeCover plugin={p} onOpen={openLightbox} t={t} />
+        {tryOnDef !== null && <span className={css.themeTryOnBadge}>{t('themeTryOn')}</span>}
         <div className={css.themeCardBody}>
           <div className={css.themeCardHead}>
             <div className={css.themeIdentity}>
@@ -3014,8 +3085,17 @@ export function MarketSection(props: MarketSectionProps) {
 
   const themeCard = (id: string, label: string, swatch: string[]) => {
     const active = themeSnap !== null && themeSnap.preference === id
+    // The card IS a registered theme — try-on needs no identity matching.
+    const def = themeSnap?.themes.find(d => d.id === id) ?? null
     return (
-      <div key={'th-' + id} className={css.card}>
+      <div
+        key={'th-' + id}
+        className={css.card}
+        onMouseEnter={() => scheduleTryOn(def)}
+        onMouseLeave={() => scheduleTryOn(null)}
+        onFocus={() => scheduleTryOn(def)}
+        onBlur={() => scheduleTryOn(null)}
+      >
         <div className={css.swatches}>{swatch.map((c, i) => <i key={i} style={{ background: c }} />)}</div>
         <div className={css.foot}>
           <span className={css.nm}>{label}</span>
@@ -3660,6 +3740,64 @@ export function MarketSection(props: MarketSectionProps) {
                       </Tooltip>
                     </div>
                   </div>
+                  {(() => {
+                    // Style chips make the gallery browsable the way a visual
+                    // catalog should be: "show me the glass ones". Tags are
+                    // inferred from the catalog (see themeTagsOf), so no schema
+                    // change is needed for the chips to exist.
+                    const tags = data === null ? [] : themeTagsOf(data.plugins)
+                    if (tags.length === 0) return null
+                    return (
+                      <div className={css.themeTags} role="group" aria-label={t('themeTagsLabel')}>
+                        <Pill active={themeTag === 'all'} onClick={() => setThemeTag('all')}>{t('all')}</Pill>
+                        {tags.map(tag => (
+                          <Pill
+                            key={tag}
+                            active={themeTag === tag}
+                            onClick={() => setThemeTag(tag)}
+                          >{t('themeTag' + tag[0]!.toUpperCase() + tag.slice(1))}</Pill>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  {data !== null && (() => {
+                    // Editor's pick of the week: a curated banner above the
+                    // gallery, rotating weekly (see FEATURED_THEMES). The
+                    // cover reuses the card preview; the actions mirror the
+                    // card's lifecycle in miniature.
+                    const featured = featuredTheme(data.plugins)
+                    if (featured === null) return null
+                    const fp = featured.plugin
+                    const fInst = installedNameOf(fp)
+                    const fMounted = fInst !== null
+                      && (skins.includes(fInst) || bootEntries.some(e => e.id === fInst))
+                      && !effectiveDisabledSet.has(fInst)
+                    return (
+                      <div className={css.themeFeatured}>
+                        <div className={css.themeFeaturedCover}>
+                          <ThemeCover plugin={fp} onOpen={openLightbox} t={t} />
+                        </div>
+                        <div className={css.themeFeaturedBody}>
+                          <div className={css.themeFeaturedHead}>
+                            <span className={css.themeFeaturedBadge}><IconSparkle16 size={12} /> {t('themeFeatured')}</span>
+                            <a className={`${css.nm} ${css.nmLink}`} href={fp.url} target="_blank" rel="noreferrer" title={fp.name} aria-label={`${fp.name} — ${t('repoLink')}`}>
+                              {pluginName(fp.name)}
+                              <IconLinkOutline14 size={12} className={css.repoMark} />
+                            </a>
+                            <span className={css.owner} title={fp.owner}>{fp.owner}</span>
+                          </div>
+                          <p className={css.themeFeaturedNote}>{featured.note[lang] || featured.note.en}</p>
+                          <div className={css.themeFeaturedActions}>
+                            {fInst === null
+                              ? <Button variant="primary" size="sm" onClick={() => setConfirming(fp)}>{t('install')}</Button>
+                              : fMounted
+                                ? <span className={css.okState}>{t('themeActive')}</span>
+                                : <Button variant="primary" size="sm" onClick={() => doUseSkin(fInst)}>{t('themeApply')}</Button>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {/* Light/dark/system live in the official Appearance setting; this
                     tab only shows what that setting can't: registered third-party
                     palettes (none in the wild yet) and installable theme plugins. */}
@@ -3676,7 +3814,7 @@ export function MarketSection(props: MarketSectionProps) {
                     : anyThemePlugins.length === 0
                       ? <div className={css.empty}>{t('themeEmpty')}</div>
                       : themePlugins.length === 0
-                        ? <div className={css.empty}>{t('empty')}</div>
+                        ? <div className={css.empty}>{themeTag !== 'all' && qThemes.trim() === '' ? t('themeTagEmpty') : t('empty')}</div>
                         : (
                             <>
                               <div className={css.themeResultBar}>

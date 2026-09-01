@@ -2165,6 +2165,73 @@ describe('per-tab search boxes', () => {
     expect(screen.getByText(en.disabledState)).toBeTruthy()
     expect(screen.getByRole('button', { name: en.themeApply })).toBeTruthy()
   })
+
+  it('try-on paints a registered theme\'s tokens on hover and restores on leave', async () => {
+    // Installed whale-skin registers real tokens; ocean-theme is NOT
+    // installed, so it has nothing to try on — badge absent, no repaint.
+    const registry = JSON.parse(JSON.stringify(REGISTRY))
+    registry.plugins.push({ name: 'ocean-theme', owner: 'dave', url: 'https://github.com/dave/ocean-theme', category: 'theme', stars: 5, added: '2026-08-20', description: { en: 'Ocean theme' }, install: '' })
+    stubFetch({
+      '/dsh-market/registry': { source: 'live', registry },
+      '/dsh-market/installed': () => ({ profile: 'web', installed: { 'whale-skin': 'github:carol/whale-skin' }, live: ['whale-skin'], disabled: [], groups: {}, groupOrder: [] }),
+    })
+    const THEME_SNAPSHOT = {
+      preference: 'light',
+      themes: [
+        { id: 'light', colorScheme: 'light', tokens: {} },
+        { id: 'dark', colorScheme: 'dark', tokens: {} },
+        { id: 'whale-skin', tokens: { '--dsw-alias-bg-base': '#123456', '--dsw-alias-brand-primary': '#abcdef' } },
+      ],
+    }
+    const { container } = render(<MarketSection {...{
+      ...props(),
+      themeStore: { subscribe: () => () => {}, getSnapshot: () => THEME_SNAPSHOT },
+    }} />)
+    await screen.findByText('dsh-loop')
+    fireEvent.click(screen.getAllByRole('button', { name: en.tabThemes })[0])
+    await screen.findByText('ocean-theme')
+    // Only the installed, token-carrying card advertises try-on.
+    expect(screen.getAllByText(en.themeTryOn)).toHaveLength(1)
+    const card = container.querySelector('[class*="themeCard"]') as HTMLElement
+
+    // Hover applies tokens only after the debounce window, not instantly.
+    fireEvent.mouseEnter(card)
+    expect(document.documentElement.style.getPropertyValue('--dsw-alias-bg-base')).toBe('')
+    await waitFor(() => expect(document.documentElement.style.getPropertyValue('--dsw-alias-bg-base')).toBe('#123456'))
+    expect(document.documentElement.style.getPropertyValue('--dsw-alias-brand-primary')).toBe('#abcdef')
+    expect(document.documentElement.style.getPropertyValue('--dsw-alias-label-primary')).toBe('')
+
+    // Leave restores the real theme: every inline variable is removed.
+    fireEvent.mouseLeave(card)
+    await waitFor(() => expect(document.documentElement.style.getPropertyValue('--dsw-alias-bg-base')).toBe(''))
+    expect(document.documentElement.style.getPropertyValue('--dsw-alias-brand-primary')).toBe('')
+
+    // Hovering a theme with nothing registered must not repaint the page.
+    const oceanCard = screen.getAllByText('ocean-theme').map(el => el.closest('[class*="themeCard"]')).find(el => el !== null)!
+    fireEvent.mouseEnter(oceanCard)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    expect(document.documentElement.style.getPropertyValue('--dsw-alias-bg-base')).toBe('')
+  })
+
+  it('themes tab shows the weekly featured banner for a curated theme', async () => {
+    // Only ONE curated URL exists in this registry, so the weekly rotation
+    // deterministically lands on it regardless of the real current date.
+    const registry = JSON.parse(JSON.stringify(REGISTRY))
+    registry.plugins.push({ name: 'dsh-qq2007-skin', owner: 'LeemanCheung', url: 'https://github.com/LeemanCheung/dsh-qq2007-skin', category: 'theme', stars: 9, added: '2026-08-20', description: { en: 'QQ 2007 skin', zh: 'QQ 2007 皮肤' }, install: '' })
+    stubFetch({ '/dsh-market/registry': { source: 'live', registry } })
+    const THEME_SNAPSHOT = { preference: 'light', themes: [] as Array<{ id: string }> }
+    render(<MarketSection {...{
+      ...props(),
+      themeStore: { subscribe: () => () => {}, getSnapshot: () => THEME_SNAPSHOT },
+    }} />)
+    await screen.findByText('dsh-loop')
+    fireEvent.click(screen.getAllByRole('button', { name: en.tabThemes })[0])
+    // Banner badge, the curated title (also present as its gallery card),
+    // and the editor's localized note.
+    await screen.findByText(en.themeFeatured)
+    expect(screen.getAllByText('dsh-qq2007-skin').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText(/nostalgia with restraint/)).toBeTruthy()
+  })
 })
 
 describe('lost install response (#100)', () => {

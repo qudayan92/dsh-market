@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  entryForDep, extractReadmeImageCandidates, extractReadmeImages, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, looksTerminal, matchInstalledName, nameCollisionCounts, orderedCategories, pageItems, pluginCategories, previewDimensionScore, qualityScore, rankThemeScreenshots, safeScreenshots, themePlugins, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
+  entryForDep, extractReadmeImageCandidates, extractReadmeImages, FEATURED_THEMES, featuredTheme, formatCount, groupSwitchState, installedForCatalog, isInstalled, isMarketItself, isoWeek, looksTerminal, matchInstalledName, nameCollisionCounts, orderedCategories, pageItems, pluginCategories, previewDimensionScore, qualityScore, rankThemeScreenshots, safeScreenshots, themePlugins, themeTags, themeTagsOf, visiblePlugins, humanOutput} from '../src/client/market-data.ts'
 import type { RegistryPlugin, ScreenshotCandidate } from '../src/client/market-data.ts'
 
 function plugin(partial: Partial<RegistryPlugin>): RegistryPlugin {
@@ -363,6 +363,56 @@ describe('discover list (visiblePlugins)', () => {
   it('themePlugins lists only themes, most-starred first', () => {
     const themes = themePlugins([...CATALOG, plugin({ name: 'starless-theme', category: 'theme' })])
     expect(themes.map(p => p.name)).toEqual(['whale-skin', 'starless-theme'])
+  })
+
+  it('themeTags infers style tags from name and English description, in THEME_TAGS order', () => {
+    expect(themeTags(plugin({ name: 'dsh-qq2007-skin', category: 'theme', description: { en: 'QQ 2007-inspired DSH Web skin: 72 native theme tokens, scoped three-pane chrome.' } })))
+      .toEqual(['retro'])
+    expect(themeTags(plugin({ name: 'dsh-theme-liquid-glass', category: 'theme', description: { en: 'Genuine Liquid Glass theme for DSH Web UI: SVG feDisplacementMap edge refraction.' } })))
+      .toEqual(['glass'])
+    expect(themeTags(plugin({ name: 'dsh-theme-colors', category: 'theme', description: { en: '30 classic open-source theme palettes (Catppuccin, Nord, Tokyo Night, Gruvbox, Solarized, etc.) mapped to official ThemeService tokens, with a Style Settings panel for live color/font/radius tweaks and JSON export/import for sharing config packs.' } })))
+      .toEqual(['dark', 'pack', 'customizer'])
+    // A day/night anime skin carries several tags at once.
+    expect(themeTags(plugin({ name: 'deep-whale-day-night-theme', category: 'theme', description: { en: 'Non-commercial day/night whale-girl skin for official Harness rc.7.' } })))
+      .toEqual(['dark', 'light', 'anime'])
+    expect(themeTags(plugin({ name: 'dsh-wallpaper-skin', category: 'theme', description: { en: 'Persistent wallpaper skin for the dsh web profile: static image or muted looping video as the app background.' } })))
+      .toEqual(['wallpaper'])
+    // Name evidence alone suffices when the description is absent.
+    expect(themeTags(plugin({ name: 'dsh-skin-manager', category: 'theme' })))
+      .toEqual(['customizer'])
+  })
+
+  it('themeTagsOf lists present tags in fixed order, themes only, deduplicated', () => {
+    const themes = [
+      plugin({ name: 'a-qq2007-skin', category: 'theme' }),
+      plugin({ name: 'b-liquid-glass', category: 'theme' }),
+      plugin({ name: 'c-liquid-glass-2', category: 'theme' }),
+      plugin({ name: 'd-tool', category: 'tool' }),
+    ]
+    expect(themeTagsOf(themes)).toEqual(['glass', 'retro'])
+  })
+
+  it('isoWeek follows ISO-8601 Monday weeks', () => {
+    expect(isoWeek(new Date('2026-01-01T12:00:00Z'))).toBe(1)
+    expect(isoWeek(new Date('2026-01-05T12:00:00Z'))).toBe(2) // first Monday
+    expect(isoWeek(new Date('2026-12-31T12:00:00Z'))).toBe(53)
+  })
+
+  it('featuredTheme picks a curated entry that still exists, rotating weekly', () => {
+    // curated = [F0, F2, F3, F4, F5]: F1's URL is deliberately missing from
+    // the catalog to prove a dead curation entry is skipped, not fatal.
+    const curated = FEATURED_THEMES.map(f => plugin({ name: f.url.split('/').pop()!, owner: 'o', url: f.url, category: 'theme' }))
+    curated.splice(1, 1)
+    // index = ISO week % candidate count: week 1 → F2, week 2 → F3, week 3 → F4.
+    expect(featuredTheme(curated, new Date('2026-01-01T12:00:00Z'))!.plugin.url).toBe(curated[1]!.url)
+    expect(featuredTheme(curated, new Date('2026-01-05T12:00:00Z'))!.plugin.url).toBe(curated[2]!.url)
+    expect(featuredTheme(curated, new Date('2026-01-12T12:00:00Z'))!.plugin.url).toBe(curated[3]!.url)
+    // The pick carries a localized note in both languages.
+    const pick = featuredTheme(curated, new Date('2026-01-05T12:00:00Z'))!
+    expect(pick.note.zh).toBeTruthy()
+    expect(pick.note.en).toBeTruthy()
+    // No curated entry in the catalog: no banner.
+    expect(featuredTheme([plugin({ name: 'x' })], new Date('2026-01-05T12:00:00Z'))).toBeNull()
   })
 
   it('orderedCategories pulls the active chip forward only while collapsed', () => {

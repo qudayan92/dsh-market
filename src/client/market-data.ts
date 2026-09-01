@@ -440,6 +440,198 @@ export function themePlugins(plugins: RegistryPlugin[]): RegistryPlugin[] {
   return plugins.filter(p => pluginCategories(p).includes('theme')).sort((a, b) => (b.stars || 0) - (a.stars || 0))
 }
 
+// ------------------------------------------------------------ theme tags
+
+/**
+ * Style / capability tags for the Themes tab, inferred from the entry's name
+ * and English description. Pure and deterministic: the same catalog renders
+ * the same chips in the same order everywhere, and the tags are free of
+ * catalog schema changes — the registry does not need new fields for the
+ * theme gallery to become browsable by style.
+ */
+export type ThemeTag = 'dark' | 'light' | 'glass' | 'minimal' | 'retro' | 'anime' | 'wallpaper' | 'pack' | 'customizer'
+
+/** Display order of theme tags — fixed, so chips never reshuffle as the
+ * catalog grows. */
+export const THEME_TAGS: readonly ThemeTag[] = [
+  'dark', 'light', 'glass', 'minimal', 'retro', 'anime', 'wallpaper', 'pack', 'customizer',
+]
+
+interface ThemeTagRule {
+  tag: ThemeTag
+  /** Matched against the plugin name (identity, never localized). */
+  name: RegExp
+  /** Matched against the English description, which every entry carries. */
+  desc: RegExp
+}
+
+const THEME_TAG_RULES: readonly ThemeTagRule[] = [
+  {
+    tag: 'dark',
+    name: /(?:dark|night|moon|midnight|noir|black(?:hole)?)/i,
+    desc: /\b(?:dark|night|moon|midnight|noir|black(?:hole)?)\b/i,
+  },
+  {
+    tag: 'light',
+    // Word-bounded: a bare "paper" inside "wallpaper" must not light-tag it.
+    // "day" alone is too weak (trading-period terms, "day/week" cycles): only
+    // daylight and explicit day/night schemes count as light evidence.
+    name: /\b(?:light|day|paper|ivory|white)\b/i,
+    desc: /\b(?:light|daylight|day[-/ ]night|paper|ivory|white)\b/i,
+  },
+  {
+    tag: 'glass',
+    name: /(?:glass|acrylic|frost)/i,
+    // Blur alone is a wallpaper-panel control, not a glass look — "blur
+    // controls" on an image background is not glassmorphism. It counts only
+    // when it qualifies a surface word.
+    desc: /\b(?:glass(?:morphism)?|acrylic|frost(?:ed)?(?:-?glass)?|liquid glass|blur(?:red)?\s+(?:glass|panels?|surfaces?|backdrop))\b/i,
+  },
+  {
+    tag: 'minimal',
+    name: /(?:minimal|e-?ink|mono(?:chrome)?|clean)/i,
+    desc: /\b(?:minimal(?:ist)?|clean|simple|monochrome|e-?ink|paper-and-ink|restrained)\b/i,
+  },
+  {
+    tag: 'retro',
+    name: /(?:retro|2007|vintage|(?:^|-)qq|(?:^|-)xp|98)/i,
+    desc: /\b(?:retro|vintage|nostalgic|2007|qq(?:98|2007| nt)?|windows xp)\b/i,
+  },
+  {
+    tag: 'anime',
+    name: /(?:anime|ikun|miku|arknights|honkai|firefly|whale|chibi|kitty|taffy)/i,
+    desc: /\b(?:anime|fandom|fan (?:skin|theme)|ikun|miku|arknights|honkai|star rail|chibi|hello kitty|whale-girl|taffy)\b/i,
+  },
+  {
+    tag: 'wallpaper',
+    name: /(?:wallpaper|wallpaper-engine)/i,
+    desc: /\b(?:wallpaper|webgpu|video background|background image|full-screen photo|dynamic background|realtime (?:ocean|webgpu))\b/i,
+  },
+  {
+    tag: 'pack',
+    name: /(?:themes|skins|palette|pack|collection|family|universe)/i,
+    // A bare "palette" is a color scheme, not a pack — ikun's "black-gold
+    // palettes" is one skin, not a collection. Count only packs/collections
+    // and palettes that are themselves the deliverable ("theme palettes").
+    desc: /\b(?:built-in themes?|theme packs?|theme collection|theme family|skin family|aggregator|theme palettes?|(?:official|classic|installable|built-in)\s+themes?|\d+\s+themes?)\b/i,
+  },
+  {
+    tag: 'customizer',
+    name: /(?:custom|manager|editor|importer|switcher|customizer)/i,
+    desc: /\b(?:customizer|manager|switcher|import|export|style settings|editor)\b/i,
+  },
+]
+
+/**
+ * Tags for one theme entry, in THEME_TAGS order. An entry may carry several
+ * tags — a QQ-2007 skin is both 'retro' and (via its dark/light schemes)
+ * 'dark'/'light'; the gallery filters by "matches any selected tag".
+ */
+export function themeTags(plugin: RegistryPlugin): ThemeTag[] {
+  const name = plugin.name.toLowerCase()
+  const desc = (plugin.description?.en ?? '').toLowerCase()
+  const tags: ThemeTag[] = []
+  for (const rule of THEME_TAG_RULES) {
+    if (rule.name.test(name) || rule.desc.test(desc)) tags.push(rule.tag)
+  }
+  return tags
+}
+
+/**
+ * Tags present in the catalog's theme entries, in THEME_TAGS order — the chip
+ * set for the Themes tab. Empty when the catalog has no theme entries at all.
+ */
+export function themeTagsOf(plugins: readonly RegistryPlugin[]): ThemeTag[] {
+  const present = new Set<ThemeTag>()
+  for (const plugin of plugins) {
+    if (!pluginCategories(plugin).includes('theme')) continue
+    for (const tag of themeTags(plugin)) present.add(tag)
+  }
+  return THEME_TAGS.filter(tag => present.has(tag))
+}
+
+// --------------------------------------------------------- featured themes
+
+/**
+ * Editor-curated themes for the "featured this week" banner. One entry per
+ * theme, identified by its registry URL; the note is a one-sentence design
+ * take (localized), the editorial voice that makes the banner read as a
+ * pick rather than a row item.
+ */
+export const FEATURED_THEMES: ReadonlyArray<{ url: string; note: LocalizedText }> = [
+  {
+    url: 'https://github.com/LeemanCheung/dsh-qq2007-skin',
+    note: {
+      zh: '把 QQ 2007 的青春记忆搬进 Harness——72 个原生 token,情怀与克制并存。',
+      en: 'The QQ 2007 era rebuilt on 72 native tokens — nostalgia with restraint.',
+    },
+  },
+  {
+    url: 'https://github.com/FAVKTOXIC/dsh-theme-liquid-glass',
+    note: {
+      zh: '教科书级的液态玻璃:边缘折射、磨砂面板、可调模糊,质感拉满。',
+      en: 'Liquid Glass done right: edge refraction, frosted panes, tunable blur.',
+    },
+  },
+  {
+    url: 'https://github.com/Lhy723/dsh-neu-theme',
+    note: {
+      zh: '新拟态的柔和光影,暗亮双色,把界面做出可以触摸的质感。',
+      en: 'Soft neumorphic light and dark — interfaces you can almost touch.',
+    },
+  },
+  {
+    url: 'https://github.com/Liu-ZA-81/dsh-theme-firefly',
+    note: {
+      zh: '星穹铁道流萤主题:壁纸、霓虹、氛围粒子,沉浸感拉满。',
+      en: 'A Honkai: Star Rail firefly skin — wallpaper, neon, particles, full immersion.',
+    },
+  },
+  {
+    url: 'https://github.com/exoticknight/dsh-theme-eink-retro',
+    note: {
+      zh: '纸墨质感,极简到只剩阅读本身——护眼星人的归宿。',
+      en: 'Paper-and-ink minimalism: reading is all that is left — a refuge for tired eyes.',
+    },
+  },
+  {
+    url: 'https://github.com/lengzhanbao/dsh-taffy-theme',
+    note: {
+      zh: '糖果粉亚克力,泰菲小可爱陪你聊天——少女心办公桌。',
+      en: 'Candy-pink acrylic with Taffy by your side — a pastel desk for the soft-hearted.',
+    },
+  },
+]
+
+/**
+ * ISO-8601 week number of a date (Monday-based, week 1 = the week holding
+ * the first Thursday). Pure and deterministic, so the banner rotation is
+ * stable for everyone in the same week.
+ */
+export function isoWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7)
+}
+
+/**
+ * The featured theme for the current week: one curated entry that still
+ * exists in the catalog, rotating weekly. Null when the catalog carries no
+ * curated theme at all.
+ */
+export function featuredTheme(
+  plugins: readonly RegistryPlugin[],
+  now: Date = new Date(),
+): { plugin: RegistryPlugin; note: LocalizedText } | null {
+  const candidates = FEATURED_THEMES
+    .map(f => ({ f, plugin: plugins.find(p => p.url === f.url) }))
+    .filter((x): x is { f: (typeof FEATURED_THEMES)[number]; plugin: RegistryPlugin } => x.plugin !== undefined)
+  if (candidates.length === 0) return null
+  return { plugin: candidates[isoWeek(now) % candidates.length]!.plugin, note: candidates[isoWeek(now) % candidates.length]!.f.note }
+}
+
 /**
  * Category chip order: collapsed with an active non-'all' chip that would
  * otherwise be clipped out of the two-row preview, the active one moves to
