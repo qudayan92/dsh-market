@@ -73,15 +73,12 @@ scripts/
 市场对它会发 `if-none-match` / `if-modified-since`（ETag/Last-Modified），托管方最好支持条件请求，
 这样每次打开能拿到 304 而不是重传整份。
 
-**最快路径（GitHub Pages，已备好工作流）**：把本仓库推到你的 GitHub 仓库，`.github/workflows/
-publish-catalog.yml` 会在你 push 改动到 `private-catalog/` 时自动把 `plugins.json` + `updates.json`
-发布到 Pages。部署后在设置里启用 Pages，然后：
+**本 fork 的目录托管方式（Route A）**：目录单独维护在 `qudayan92/dsh-plugin-market-catalog` 仓库（root 下 `plugins.json` + `updates.json`），
+市场经 `raw.githubusercontent.com/qudayan92/dsh-plugin-market-catalog/main/plugins.json` 读取（即 `BRAND.defaultCatalogUrl`）。
+更新目录 = 把本目录的 `plugins.json` + `updates.json` 推送到那个仓库的 `main`。
 
-```sh
-# 把下列地址填进 src/brand.ts 的 catalogBaseUrl（或交给 DSHM_REGISTRY_URL / DSHM_UPDATES_ORIGIN 覆盖）
-# plugins.json : https://<owner>.github.io/<repo>/plugins.json
-# updates.json : https://<owner>.github.io/<repo>/updates.json
-```
+（`dsh-market` 仓库**不再内置 `publish-catalog.yml` / Pages 发布**——市场不读 dsh-market 的 Pages。若你想换托管方式，
+任选一个静态可 GET 的地方放置这两个文件，并改 `BRAND.catalogBaseUrl` 或设 `DSHM_REGISTRY_URL` 指向即可。）
 
 ### 2) 发布你要上架的插件到私有 npm registry
 

@@ -3,7 +3,7 @@
   "url": "https://github.com/qudayan92/dsh-plugin-market-catalog",
   "source": "https://github.com/qudayan92/dsh-market",
   "updated": "2026-08-28",
-  "count": 34,
+  "count": 28,
   "categories": {
     "browser": {
       "en": "Browser & Web",
@@ -232,24 +232,6 @@
       "added": "2026-08-15"
     },
     {
-      "name": "dsh-arknights#pramanix-eyjafjalla",
-      "owner": "DocJlm",
-      "url": "https://github.com/DocJlm/dsh-arknights/tree/main/skins/pramanix-eyjafjalla",
-      "category": "theme",
-      "description": {
-        "en": "Arknights-inspired fan skin for the DSH Web UI featuring Pramanix and Eyjafjalla in a day/night celestial garden.",
-        "zh": "DSH Web 明日方舟同人皮肤“初雪和小羊”，包含昼夜星海庭园背景与双角色布局。"
-      },
-      "npm": "dsh-arknights",
-      "stars": 3,
-      "downloads": 208,
-      "screenshots": [
-        "https://raw.githubusercontent.com/DocJlm/dsh-arknights/HEAD/skins/pramanix-eyjafjalla/preview/cover.webp"
-      ],
-      "install": "dsh plugin --profile web add dsh-arknights",
-      "added": "2026-08-16"
-    },
-    {
       "name": "dsh-thirteen-bg",
       "owner": "feng78-boop",
       "url": "https://github.com/feng78-boop/dsh-thirteen-bg",
@@ -352,25 +334,6 @@
       "added": "2026-08-23"
     },
     {
-      "name": "dsh-tidychat",
-      "owner": "BananaSoldier01",
-      "url": "https://github.com/BananaSoldier01/dsh-tidychat",
-      "category": "session",
-      "description": {
-        "en": "Fold completed turns down to their final conclusions, insert a divider line between thinking and text, and an adaptive left-edge navigation rail with hover summaries and click-to-jump; optional idle-time loading of earlier history and one-click diagnostic report to GitHub issues.",
-        "zh": "已完成轮次自动折叠只留最终结论、思考与正文之间插入分隔线、自适应左缘定位条（悬停摘要 + 点击跳转）；可选空闲时自动加载更早历史，异常时可一键生成诊断报告提交 GitHub issue。"
-      },
-      "npm": "@bananasoldier01/dsh-tidychat",
-      "stars": 6,
-      "downloads": 74,
-      "screenshots": [
-        "https://raw.githubusercontent.com/BananaSoldier01/dsh-tidychat/HEAD/assets/navigator.png",
-        "https://raw.githubusercontent.com/BananaSoldier01/dsh-tidychat/HEAD/assets/settings.png"
-      ],
-      "install": "dsh plugin --profile web add @bananasoldier01/dsh-tidychat",
-      "added": "2026-08-24"
-    },
-    {
       "name": "dsh-reference-anything",
       "owner": "Chael-Chael",
       "url": "https://github.com/Chael-Chael/dsh-reference-anything",
@@ -391,25 +354,6 @@
         "https://raw.githubusercontent.com/Chael-Chael/dsh-reference-anything/HEAD/images/at-skills.png"
       ],
       "install": "dsh plugin --profile web add dsh-reference-anything",
-      "added": "2026-08-19"
-    },
-    {
-      "name": "dsh-client-auto-retry",
-      "owner": "Frog755",
-      "url": "https://github.com/Frog755/dsh-client-auto-retry",
-      "category": "session",
-      "description": {
-        "en": "Auto-resumes interrupted DSH turns: sends a queued 「继续」 after turn/end with error, interrupted or max-tokens reasons, with a grace period, cooldown, a consecutive-attempts cap, boot-time scanning and a settings card; it never switches models or providers.",
-        "zh": "回合中断自动续跑：turn/end 因 error / interrupted / max-tokens 结束时自动发送「继续」，支持宽限期、冷却、连续次数上限、启动扫描与设置卡片；不切换模型/provider。"
-      },
-      "npm": "@frog755/dsh-client-auto-retry",
-      "stars": 2,
-      "downloads": 338,
-      "screenshots": [
-        "https://raw.githubusercontent.com/Frog755/dsh-client-auto-retry/HEAD/assets/demo.svg",
-        "https://raw.githubusercontent.com/Frog755/dsh-client-auto-retry/HEAD/assets/screenshot-settings-card.png"
-      ],
-      "install": "dsh plugin --profile web add @frog755/dsh-client-auto-retry",
       "added": "2026-08-19"
     },
     {
@@ -448,44 +392,6 @@
       ],
       "install": "dsh plugin --profile web add stratagate-dsh",
       "added": "2026-08-16"
-    },
-    {
-      "name": "dsh-memory-system",
-      "owner": "zhujunpeng12",
-      "url": "https://github.com/zhujunpeng12/dsh-memory-system",
-      "category": "memory",
-      "description": {
-        "en": "Local-first persistent memory for DeepSeek Harness: bounded pre-step hot-memory injection, exact and Chinese-bigram BM25 cold recall, six agent tools, approval-gated lease-lock writes with recovery receipts, and read-only governance and trajectory-review candidates.",
-        "zh": "面向 DeepSeek Harness 的本地优先持久记忆：在 pre-step 注入有预算上限的热记忆，使用精确匹配与中文二元 BM25 召回冷层，提供六个 Agent 工具，并以审批门禁、租约锁、恢复回执和只读治理与轨迹复盘候选保护写入。"
-      },
-      "npm": "@zhujunpeng12/dsh-memory-system",
-      "stars": 8,
-      "downloads": 174,
-      "screenshots": [
-        "https://raw.githubusercontent.com/zhujunpeng12/dsh-memory-system/master/assets/social-preview.png",
-        "https://raw.githubusercontent.com/zhujunpeng12/dsh-memory-system/master/docs/memory-system-flowchart.png"
-      ],
-      "install": "dsh plugin --profile web add @zhujunpeng12/dsh-memory-system",
-      "added": "2026-08-21"
-    },
-    {
-      "name": "dsh-skill-mcp-manager",
-      "owner": "alone-tree",
-      "url": "https://github.com/alone-tree/dsh-skill-mcp-manager",
-      "category": "tools",
-      "description": {
-        "en": "One-stop visual management of DSH Skills & MCP: on-demand MCP loading, in-session hot reload, SKILL & MCP descriptions viewable in the plugin.",
-        "zh": "一站式可视化管理 DSH 的 SKILL 与 MCP：MCP按需加载、会话内热重载、SKILL与MCP描述可在插件内直接查看"
-      },
-      "npm": "dsh-skill-mcp-manager",
-      "stars": 1,
-      "downloads": 113,
-      "screenshots": [
-        "https://raw.githubusercontent.com/alone-tree/dsh-skill-mcp-manager/main/docs/screenshot-mcp.png",
-        "https://raw.githubusercontent.com/alone-tree/dsh-skill-mcp-manager/main/docs/screenshot-skills.png"
-      ],
-      "install": "dsh plugin --profile web add dsh-skill-mcp-manager",
-      "added": "2026-08-21"
     },
     {
       "name": "blender",
@@ -540,24 +446,6 @@
         "https://raw.githubusercontent.com/263311487-ux/dsh-verify/main/assets/visual-diff.png"
       ],
       "install": "dsh plugin --profile web add dsh-verify",
-      "added": "2026-08-17"
-    },
-    {
-      "name": "dsh-web-search-firecrawl",
-      "owner": "elves-ai",
-      "url": "https://github.com/elves-ai/dsh-web-search-firecrawl",
-      "category": "browser",
-      "description": {
-        "en": "Firecrawl-backed web search provider for the built-in web_search tool, with a settings card for the API key and result limits.",
-        "zh": "基于 Firecrawl 的网页搜索提供方：替换内置 web_search 的后端，并提供 API Key、结果数量等字段的设置卡片。"
-      },
-      "npm": "@elves-ai/dsh-web-search-firecrawl",
-      "stars": 3,
-      "downloads": 414,
-      "screenshots": [
-        "https://raw.githubusercontent.com/elves-ai/dsh-web-search-firecrawl/master/docs/firecrawl-settings.png"
-      ],
-      "install": "dsh plugin --profile web add @elves-ai/dsh-web-search-firecrawl",
       "added": "2026-08-17"
     },
     {
