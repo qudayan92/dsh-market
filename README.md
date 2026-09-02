@@ -17,8 +17,18 @@ One-click themes: install, switch live, no restart.
 
 ## Install
 
+This market ships a **prebuilt package** on GitHub Releases (compiled artifacts
+included — install and go, no local build):
+
 ```sh
-dsh plugin --profile web add dshmarket
+dsh plugin --profile web add "https://github.com/qudayan92/dsh-market/releases/download/v1.41.0/dshmarket-1.41.0.tgz"
+```
+
+Or install straight from the source repository (needs network access to
+GitHub; the first install runs one local build):
+
+```sh
+dsh plugin --profile web add github:qudayan92/dsh-market
 ```
 
 Restart `dsh web`, then open **Settings → Plugin Market**.
