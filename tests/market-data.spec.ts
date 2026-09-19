@@ -389,6 +389,20 @@ describe('discover list (visiblePlugins)', () => {
       .toEqual(['customizer'])
   })
 
+  it('themeTags honors THEME_TAG_OVERRIDES before inference, keyed by url', () => {
+    // Quiet-but-obvious entries inference cannot see get authoritative tags.
+    expect(themeTags(plugin({ name: 'Catppuccin-dsh-theme', url: 'https://github.com/zhijun-dai/Catppuccin-dsh-theme', category: 'theme' })))
+      .toEqual(['dark', 'light', 'pack'])
+    expect(themeTags(plugin({ name: 'pixel-skin', url: 'https://github.com/zhuifengqug/pixel-skin', category: 'theme' })))
+      .toEqual(['anime'])
+    // The override wins even when the name would have inferred something else.
+    expect(themeTags(plugin({ name: 'dsh-liquid-glass', url: 'https://github.com/zhxqc/dsh-oh-my-theme', category: 'theme', description: { en: 'Genuine Liquid Glass theme.' } })))
+      .toEqual(['customizer'])
+    // Entries absent from the table still go through inference unchanged.
+    expect(themeTags(plugin({ name: 'dsh-skin-manager', category: 'theme' })))
+      .toEqual(['customizer'])
+  })
+
   it('themeTagsOf lists present tags in fixed order, themes only, deduplicated', () => {
     const themes = [
       plugin({ name: 'a-qq2007-skin', category: 'theme' }),

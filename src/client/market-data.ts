@@ -541,11 +541,36 @@ const THEME_TAG_RULES: readonly ThemeTagRule[] = [
 ]
 
 /**
+ * Manual tag calibration, keyed by registry URL so catalog renames stay
+ * stable. Inference covers most entries but deliberately misses quiet ones
+ * (a palette collection that never says "pack", an importer that never says
+ * "customizer"). This table is the authoritative answer for those: entries
+ * listed here skip inference entirely.
+ *
+ * Values are in THEME_TAGS order; keep additions to entries whose tags are
+ * unambiguous from their documented behavior.
+ */
+export const THEME_TAG_OVERRIDES: Readonly<Record<string, readonly ThemeTag[]>> = {
+  'https://github.com/zhijun-dai/Catppuccin-dsh-theme': ['dark', 'light', 'pack'],
+  'https://github.com/zhijun-dai/Solarized-dsh-theme': ['dark', 'light', 'pack'],
+  'https://github.com/zhuifengqug/pixel-skin': ['anime'],
+  'https://github.com/Sim-xia/dsh-vscode-theme': ['customizer'],
+  'https://github.com/shawnlone/dsh-theme-tuner': ['customizer'],
+  'https://github.com/leavestring/awesome-dsh-background-plugin': ['wallpaper'],
+  'https://github.com/AKS1st/dsh-cyber-particle': ['wallpaper'],
+  'https://github.com/yzke/dsh-icon-theme': ['customizer'],
+  'https://github.com/zhxqc/dsh-oh-my-theme': ['customizer'],
+}
+
+/**
  * Tags for one theme entry, in THEME_TAGS order. An entry may carry several
  * tags — a QQ-2007 skin is both 'retro' and (via its dark/light schemes)
  * 'dark'/'light'; the gallery filters by "matches any selected tag".
+ * Entries present in THEME_TAG_OVERRIDES return exactly those tags.
  */
 export function themeTags(plugin: RegistryPlugin): ThemeTag[] {
+  const override = THEME_TAG_OVERRIDES[plugin.url]
+  if (override !== undefined) return [...override]
   const name = plugin.name.toLowerCase()
   const desc = (plugin.description?.en ?? '').toLowerCase()
   const tags: ThemeTag[] = []
