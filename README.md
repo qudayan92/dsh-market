@@ -21,7 +21,7 @@ This market ships a **prebuilt package** on GitHub Releases (compiled artifacts
 included — install and go, no local build):
 
 ```sh
-dsh plugin --profile web add "https://github.com/qudayan92/dsh-market/releases/download/v1.41.0/dshmarket-1.41.0.tgz"
+dsh plugin --profile web add "https://github.com/qudayan92/dsh-market/releases/download/v1.41.1/dshmarket-1.41.1.tgz"
 ```
 
 Or install straight from the source repository (needs network access to

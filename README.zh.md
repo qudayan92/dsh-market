@@ -20,7 +20,7 @@
 本市场通过 GitHub Release 提供**预构建包**（含编译产物，装完即用，无需本地构建）：
 
 ```sh
-dsh plugin --profile web add "https://github.com/qudayan92/dsh-market/releases/download/v1.41.0/dshmarket-1.41.0.tgz"
+dsh plugin --profile web add "https://github.com/qudayan92/dsh-market/releases/download/v1.41.1/dshmarket-1.41.1.tgz"
 ```
 
 也可以直接从仓库源码安装（需要你的网络能访问 GitHub，且首次会跑一次本地构建）：
